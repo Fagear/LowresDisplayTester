@@ -1,30 +1,23 @@
-/*
- * syncavr.c
- *
- * Created:			2022-05-04 11:56:23
- * Modified:		2022-05-20
- * Author:			Maksim Kryukov aka Fagear (fagear@mail.ru)
- *
- */ 
-
 #include "syncavr.h"
 
-volatile uint8_t tasks = 0;		// System tasks.
-uint8_t disp_presence = 0;		// Flags for detected displays types
-uint8_t active_region = 0;		// Flag for lines in active region.
-volatile uint8_t act_delay = COMP_ACT_DELAY_625i;		// Active line start delay from H-sync (for clearing interrupt from IFs).
-uint16_t sync_step_cnt = 0;		// Current step in sync generator logic.
-volatile uint16_t sync_step_limit = 0;	// Maximum step number for selected video system.
-uint16_t frame_line_cnt = 0;	// Number of current line in the frame.
-uint8_t video_sys = MODE_COMP_625i;	// Video system value, used in interrupt (buffered).
-uint8_t usr_video = MODE_COMP_625i;	// Video system value set by user.
-uint8_t usr_act_delay = COMP_ACT_DELAY_625i;	// Active line start delay from H-sync for user-selected video system.
-uint8_t usr_act_time = COMP_ACT_LEN_625i;	// Active line length for user-selected video system (for clearing interrupt from IFs).
+volatile uint8_t tasks = 0;							// System tasks.
+uint8_t usr_video = MODE_COMP_625i;					// Video system value set by user.
+uint8_t usr_act_delay = COMP_ACT_DELAY_625i;		// Line active part start delay from H-sync for user-selected video system.
+uint8_t usr_act_time = COMP_ACT_LEN_625i;			// Line active part duration for user-selected video system.
+uint8_t disp_presence = 0;							// Flags for detected displays types
+uint8_t active_timer_mode = LACT_ST_IDLE;			// Mode of the line active part timer.
+uint8_t active_region = 0;							// Flags for lines in active region.
+volatile uint8_t act_delay = COMP_ACT_DELAY_625i;	// Line active part start delay from H-sync (for clearing interrupt from IFs).
+volatile uint8_t act_time = COMP_ACT_LEN_625i;		// Line active part duration (for clearing interrupt from IFs).
+uint16_t sync_step_cnt = 0;							// Current step in sync generator logic.
+volatile uint16_t sync_step_limit = 0;				// Maximum step number for selected video system.
+uint16_t frame_line_cnt = 0;						// Number of current line in the frame.
+uint8_t video_sys = MODE_COMP_625i;					// Video system value, used in interrupt (buffered).
+uint8_t kbd_state = 0;								// Buttons states from the last [keys_simple_scan()] poll.
+uint8_t kbd_pressed = 0;							// Flags for buttons that have been pressed (should be cleared after processing).
+uint8_t kbd_released = 0;							// Flags for buttons that have been released (should be cleared after processing).
+volatile uint8_t comp_data_idx = 0;					// Index for vertical bar groups.
 uint16_t dbg_index = 0;
-uint8_t kbd_state = 0;			// Buttons states from the last [keys_simple_scan()] poll.
-uint8_t kbd_pressed = 0;		// Flags for buttons that have been pressed (should be cleared after processing).
-uint8_t kbd_released = 0;		// Flags for buttons that have been released (should be cleared after processing).
-volatile uint8_t comp_data_idx = 0;		// Index for vertical bar groups.
 
 volatile const uint8_t ucaf_compile_time[] PROGMEM = __TIME__;		// Time of compilation
 volatile const uint8_t ucaf_compile_date[] PROGMEM = __DATE__;		// Date of compilation
@@ -32,7 +25,7 @@ volatile const uint8_t ucaf_version[] PROGMEM = "v0.05";			// Firmware version
 volatile const uint8_t ucaf_author[] PROGMEM = "Maksim Kryukov aka Fagear (fagear@mail.ru)";	// Author
 volatile const uint8_t ucaf_info[] PROGMEM = "ATmega sync gen/display tester";					// Firmware description
 
-//-------------------------------------- Horizontal active region timing management (each H-line).
+//-------------------------------------- Video sync timing (horizontal/composite), active region timing management (each H-line).
 ISR(INT0_INT)
 {	
 	/*if(frame_line_cnt==(dbg_index-1))
@@ -43,61 +36,36 @@ ISR(INT0_INT)
 		DBG_5_OFF;
 	}*/
 	DBG_2_ON;
+	LACT_STOP;
+	LACT_DATA = 0;
+#ifdef FGR_DRV_IO_T0OC_HW_FOUND
 	// Check if current line is in vertical active region.
 	if(active_region!=0)
 	{
-#ifdef FGR_DRV_IO_T0OC_HW_FOUND
-		LACT_STOP;
-		// Force OC pin LOW (workaround for skewed timing to prevent H-sync corruption).
-		LACT_OC_FORCE;
-		// Switch to "Toggle OC pin on compare" to allow pin to be switched HIGH from forced LOW.
-		LACT_OC_TOGGLE1; LACT_OC_TOGGLE2;
-#endif
-		// Wait for active line part start.
-		do
-		{
-			__builtin_avr_delay_cycles(0);
-		}
-		while(SYNC_DATA<act_delay);
-#ifdef FGR_DRV_IO_T0OC_HW_FOUND
-		// Force OC pin HIGH from LOW.
-		LACT_OC_FORCE;
-		// Switch to "Clear OC pin on compare" to ensure that OC pin will be switched OFF when timer runs out.
-		LACT_OC_CLEAR1; LACT_OC_CLEAR2;
 		// Start line active region timer.
-		LACT_DATA = 0; LACT_START;
-#endif
-#ifdef FGR_DRV_SPI_HW_FOUND
-		if((active_region&ACT_MN_LINES)!=0)
-		{
-			comp_data_idx = 0;
-			// Set minimal frequency for first set of vertical bars.
-			//SPI_set_target_clock(BAR_FREQ_500Hz);
-			SPI_CONTROL &= ~(1<<SPR0);
-			SPI_CONTROL |= (1<<SPR1);
-			SPI_STATUS = (1<<SPI2X);
-			// Start drawing first set of vertical bars.
-			SPI_DATA = SPI_DUMMY_SEND;
-		}
-		else if((active_region&ACT_RGB_LINES)!=0)
-		{
-			//SPI_set_target_clock(BAR_FREQ_4MHz);
-			SPI_CONTROL &= ~((1<<SPR1)|(1<<SPR0));
-			SPI_STATUS &= ~(1<<SPI2X);
-			// Start drawing first set of vertical bars.
-			SPI_DATA = SPI_DUMMY_SEND;
-		}
-#endif /* FGR_DRV_SPI_HW_FOUND */
+		LACT_START;
+		// Preload time for next active part waiting.
+		LACT_PULSE_DUR = act_delay;
+		// Enable interrupt to re-tune timer for active part duration.
+		LACT_EN_INTR;
+		// Switch to "Toggle OC pin on compare" to allow pin to be switched HIGH on the next compare after restart.
+		LACT_OC_TOGGLE1; LACT_OC_TOGGLE2;
+		//active_timer_mode = LACT_ST_WAIT_ACT;
 	}
-	// Allow timer overflow interrupt to activate after this one.
-	SYNC_EN_INTR;
-	DBG_2_OFF;
-}
-
-//-------------------------------------- Video sync timing (horizontal/composite).
-ISR(SYNC_INT)
-{
-	DBG_3_ON;
+#endif
+	if(video_sys==MODE_VGA_60Hz)
+	{
+		if(sync_step_cnt==VGA_VS_START)
+		{
+			// Start vertical sync pulse.
+			VSYNC_PULL_DOWN;
+		}
+		else if(sync_step_cnt==VGA_VS_STOP)
+		{
+			// End vertical sync pulse.
+			VSYNC_PULL_UP;
+		}
+	}
 	if(video_sys==MODE_COMP_625i)
 	{
 		// 625i
@@ -293,17 +261,17 @@ ISR(SYNC_INT)
 		if(sync_step_cnt==VGA_HS_START)
 		{
 			// Start vertical sync pulse.
-			VSYNC_PULL_DOWN;
+			//VSYNC_PULL_DOWN;
 			// Horizontal sync pulse period/length.
 			SYNC_STEP_DUR = VGA_LINE_LEN;
 			SYNC_PULSE_DUR = VGA_SYNC_H_LEN;
 		}
-		if(sync_step_cnt==VGA_VS_STOP)
+		/*if(sync_step_cnt==VGA_VS_STOP)
 		{
 			// End vertical sync pulse.
 			VSYNC_PULL_UP;
 		}
-		else if(sync_step_cnt==VGA_BP_STOP)
+		else */if(sync_step_cnt==VGA_BP_STOP)
 		{
 			// Enable drawing in active region.
 			active_region |= (ACT_RUN|ACT_RGB_LINES);
@@ -320,6 +288,7 @@ ISR(SYNC_INT)
 	sync_step_cnt++;
 	if(sync_step_cnt>sync_step_limit)
 	{
+		// New frame starts.
 		DBG_1_ON;
 		// Loop line counter within one frame.
 		frame_line_cnt = 0;
@@ -331,23 +300,81 @@ ISR(SYNC_INT)
 		// Apply delay for the active part for the H-sync.
 		act_delay = usr_act_delay;
 		// Apply length of the active part of the line.
-		LACT_PULSE_DUR = usr_act_time;
+		act_time = usr_act_time;
 #endif
 		DBG_1_OFF;
 	}
-	// Mask this interrupt to allow INT0 to activate first on the next pulse (on timer overflow).
-	SYNC_DIS_INTR;
-	DBG_3_OFF;
+	DBG_2_OFF;
 }
 
 #ifdef FGR_DRV_IO_T0OC_HW_FOUND
 //-------------------------------------- Horizontal line active part timing.
-ISR(LACT_INT)
+ISR(LACT_COMP_INT)
 {
 	DBG_4_ON;
-	// Stop and reset this timer, wait for another start from INT0.
-	LACT_STOP;
-	LACT_DATA = 0;
+	//if(active_timer_mode==LACT_ST_WAIT_ACT)
+	{
+		// Active part of the line begins.
+		//active_timer_mode = LACT_ST_ACT;
+		// Disable interrupt for the end of the line.
+		LACT_DIS_INTR;
+		// Load duration of the active part.
+		LACT_PULSE_DUR = act_time;
+		// Switch to "Clear OC pin on compare" to ensure that OC pin will be switched OFF when timer runs out.
+		LACT_OC_CLEAR1; LACT_OC_CLEAR2;
+#ifdef FGR_DRV_SPI_HW_FOUND
+		// Start drawing patterns.
+		comp_data_idx = 0;
+		if((active_region&ACT_MN_LINES)!=0)
+		{
+			// Set minimal frequency for first set of vertical bars.
+			//SPI_set_target_clock(BAR_FREQ_500Hz);
+			SPI_CONTROL &= ~(1<<SPR0);
+			SPI_CONTROL |= (1<<SPR1);
+			SPI_STATUS = (1<<SPI2X);
+			// Start drawing first set of vertical bars.
+			SPI_DATA = SPI_DUMMY_SEND;
+		}
+		else if((active_region&ACT_RGB_LINES)!=0)
+		{
+			//SPI_set_target_clock(BAR_FREQ_4MHz);
+			SPI_CONTROL &= ~((1<<SPR1)|(1<<SPR0));
+			SPI_STATUS &= ~(1<<SPI2X);
+			// Start drawing first set of vertical bars.
+			SPI_DATA = SPI_DUMMY_SEND;
+		}
+#endif
+	}
+	/*else if(active_timer_mode==LACT_ST_ACT)
+	{
+		DBG_3_ON;
+		// Active part of the line ended.
+		active_timer_mode = LACT_ST_IDLE;
+		// Stop and reset this timer, wait for another start from HSYNC.
+		LACT_STOP;
+		LACT_DATA = 0;
+		// Switch to "Toggle OC pin on compare" to allow pin to be switched HIGH on the next compare after restart.
+		LACT_OC_TOGGLE1; LACT_OC_TOGGLE2;
+		// Preload time for next active part waiting.
+		LACT_PULSE_DUR = act_delay;
+		// Check for Vsync condition before next Hsync.
+		if(video_sys==MODE_VGA_60Hz)
+		{
+			if(sync_step_cnt==VGA_VS_START)
+			{
+				// Start vertical sync pulse.
+				VSYNC_PULL_DOWN;
+			}
+			else if(sync_step_cnt==VGA_VS_STOP)
+			{
+				// End vertical sync pulse.
+				VSYNC_PULL_UP;
+			}
+		}
+		DBG_3_OFF;
+	}*/
+	// Allow timer overflow interrupt to activate after this one.
+	//SYNC_EN_INTR;
 	DBG_4_OFF;
 }
 #endif
@@ -420,31 +447,14 @@ inline void system_startup(void)
 	
 	// Init hardware resources.
 	HW_init();
+	// Preload some values to sync timer.
+	SYNC_STEP_DUR = COMP_HALF_LEN_625i;			// Load duration of the H-cycle.
+	SYNC_PULSE_DUR = COMP_SYNC_V_LEN_625i;		// Load duration of the H-pulse.
 	
 	// Enable watchdog.
 	WDT_PREP_ON;
 	WDT_SW_ON;
 	wdt_reset();
-}
-
-//-------------------------------------- Restart composite sync generation.
-void restart_composite(void)
-{
-	if(usr_video==MODE_COMP_625i)
-	{
-		// 625i
-		SYNC_STEP_DUR = COMP_HALF_LEN_625i;			// Load duration of the cycle.
-		SYNC_PULSE_DUR = COMP_SYNC_V_LEN_625i;		// Load duration of the pulse.
-		usr_act_time = COMP_ACT_LEN_625i;
-	}
-	else
-	{
-		// 525i
-		SYNC_STEP_DUR = COMP_HALF_LEN_525i;			// Load duration of the cycle.
-		SYNC_PULSE_DUR = COMP_EQ_PULSE_LEN_525i;	// Load duration of the pulse.
-		usr_act_time = COMP_ACT_LEN_525i;
-	}
-	SYNC_DATA = 0;		// Reset counter.
 }
 
 //-------------------------------------- Keyboard scan routine.
@@ -497,6 +507,7 @@ void keys_simple_scan(void)
 	}
 }
 
+//====================================== MAIN FUNCTION. 
 int main()
 {
 	// Start-up initialization.
@@ -521,7 +532,6 @@ int main()
 // 		HD44780_write_number(123, HD44780_NUMBER);
 // 	}
 #endif /* CONF_EN_HD44780 */
-	restart_composite();
 	
 #ifdef FGR_DRV_UARTSPI_HW_FOUND
 	UART_SPI_CONFIG_M0;
@@ -536,8 +546,8 @@ int main()
 	SPI_STATUS = (1<<SPI2X);
 	SPI_START; SPI_INT_EN;
 #endif /* FGR_DRV_SPI_HW_FOUND */
-	// Enable interrupt from syncgen.      
-	SYNC_EN_INTR;
+	// Enable interrupt from sync-gen.      
+	//SYNC_EN_INTR;
 	
 	// Enable interrupts globally.
 	sei();
@@ -600,6 +610,7 @@ int main()
 		{
 			if((kbd_state&SW_VID_SYS1)!=0)
 			{
+				// Select composite 525i.
 				usr_video = MODE_COMP_525i;
 				usr_act_delay = COMP_ACT_DELAY_525i;
 				usr_act_time = COMP_ACT_LEN_525i;
@@ -607,6 +618,7 @@ int main()
 			}
 			else
 			{
+				// Select composite 625i.
 				usr_video = MODE_COMP_625i;
 				usr_act_delay = COMP_ACT_DELAY_625i;
 				usr_act_time = COMP_ACT_LEN_625i;
@@ -615,6 +627,7 @@ int main()
 		}
 		else
 		{
+			// Select VGA 640x480@60.
 			usr_video = MODE_VGA_60Hz;
 			usr_act_delay = VGA_ACT_DELAY;
 			usr_act_time = VGA_ACT_LEN;

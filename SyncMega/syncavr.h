@@ -39,6 +39,15 @@ enum
 	MODE_VGA_60Hz,					// VGA 640x480 @ 60Hz progressive
 };
 
+// States of active line timer.
+enum
+{
+	LACT_ST_WAIT_ACT,				// Counting until start of the active part with OC at low
+	LACT_ST_ACT,					// Counting until end of the active part with OC at high
+	LACT_ST_IDLE,					// Not counting / waiting for new horizontal pulse
+};
+
+// Line active part flags.
 enum
 {
 	ACT_RUN				= (1<<0),	// Line is now in active part
@@ -56,6 +65,7 @@ enum
 	BAR_FREQ_8MHz = 8000000,
 };
 
+// System tasks.
 enum
 {
 	TASK_UPDATE_ASYNC = (1<<0),
@@ -63,7 +73,6 @@ enum
 };
 
 void system_startup(void);
-void restart_composite(void);
 void keys_simple_scan(void);
 int main();
 

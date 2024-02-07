@@ -1,25 +1,39 @@
-/*
- * drv_io_mxx.h
- *
- * Created:			2022-05-20 13:21:37
- * Modified:		2022-05-20
- * Author:			Maksim Kryukov aka Fagear (fagear@mail.ru)
- *
- * Supported MCUs:	ATmega8(-/A), ATmega16(-/A), ATmega32(-/A).
- *
- */
+/**************************************************************************************************************************************************************
+drv_io_mxx.h
+
+Copyright © 2024 Maksim Kryukov <fagear@mail.ru>
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+Created: 2022-05
+
+Part of the [LowresDisplayTester] project.
+Part of the I/O and peripheral hardware driver for AVR MCUs.
+This driver provides HAL and startup initialization of the hardware.
+
+Supported MCUs:	ATmega8(-/A), ATmega16(-/A), ATmega32(-/A).
+
+**************************************************************************************************************************************************************/
 
 #ifndef FGR_DRV_IO_MXX_H_
 #define FGR_DRV_IO_MXX_H_
-
-#include <avr/io.h>
 
 #undef FGR_DRV_IO_M8
 #undef FGR_DRV_IO_T0OC_HW_FOUND
 #ifdef WDCE
 	// Detect ATmega8 and ATmega8A.
 	#define FGR_DRV_IO_M8
-#endif
+#endif /* WDCE */
 
 // Buttons.
 #ifdef FGR_DRV_IO_M8
@@ -60,7 +74,7 @@
 	#define VSYNC_PORT			PORTD
 	#define VSYNC_DIR			DDRD
 	#define VSYNC_PIN			(1<<6)
-#endif
+#endif /* FGR_DRV_IO_M8 */
 #define VSYNC_SETUP1		VSYNC_DIR |= VSYNC_PIN
 #define VSYNC_SETUP2		VSYNC_PORT |= VSYNC_PIN
 #define VSYNC_PULL_UP		VSYNC_PORT |= VSYNC_PIN
@@ -75,9 +89,6 @@
 #define INT0_CONFIG_PIN2	PORTD |= (1<<2)				// INT0 input pin port
 
 // Video sync timing setup.
-#define SYNC_INT			TIMER1_OVF_vect				// Timer 1 interrupt vector alias
-#define SYNC_EN_INTR		TIMSK |= (1<<TICIE1)|(0<<OCIE1A)|(0<<OCIE1B)|(0<<TOIE1)		// Enable interrupt
-#define SYNC_DIS_INTR		TIMSK &= ~(1<<TICIE1)|(1<<OCIE1A)|(1<<OCIE1B)|(1<<TOIE1)	// Disable interrupt
 #define SYNC_CONFIG_REG1	TCCR1A = (1<<COM1A1)|(1<<COM1A0)|(0<<COM1B1)|(0<<COM1B0)|(1<<WGM11)|(0<<WGM10)		// Enable Fast-PWM with TOP = ICR1
 #define SYNC_CONFIG_REG2	TCCR1B = (0<<ICNC1)|(0<<ICES1)|(1<<WGM13)|(1<<WGM12)|(0<<CS12)|(0<<CS11)|(1<<CS10)	// Start timer with clk/1 clock
 #define SYNC_DATA			TCNT1L						// Count register
@@ -91,28 +102,45 @@
 	// ATmega16(-/A), ATmega32(-/A).
 	#define SYNC_CONFIG_PIN1	PORTD &= ~(1<<5)		// Output pin port
 	#define SYNC_CONFIG_PIN2	DDRD |= (1<<5)			// Output pin direction
-#endif
+#endif /* FGR_DRV_IO_M8 */
 
-#ifndef FGR_DRV_IO_M8
+#ifdef FGR_DRV_IO_M8
+	#warning Partially supported MCU, video bars generation will not work!
+#else
 	// Video active line timing setup.
 	#define FGR_DRV_IO_T0OC_HW_FOUND
-	#define LACT_INT			TIMER0_COMP_vect					// Timer 0 interrupt vector alias
+	#define LACT_COMP_INT		TIMER0_COMP_vect					// Timer 0 Compare interrupt vector alias
 	#define LACT_EN_INTR		TIMSK |= (1<<OCIE0)|(0<<TOIE0)		// Enable interrupt
 	#define LACT_DIS_INTR		TIMSK &= ~(1<<OCIE0)|(1<<TOIE0)		// Disable interrupt
 	#define LACT_CONFIG_REG1	TCCR0 = (0<<FOC0)|(0<<WGM00)|(1<<COM01)|(0<<COM00)|(1<<WGM01)|(0<<CS02)|(0<<CS01)|(0<<CS00)
 	#define LACT_CONFIG_REG2	
 	#define LACT_START			TCCR0 |= (1<<CS01)					// Start timer with clk/8 clock
 	#define LACT_STOP			TCCR0 &= ~(1<<CS01)					// Stop timer
-	#define LACT_OC_CLEAR1		TCCR0 &= ~(1<<COM00)				// Switch to "Clear OC pin on compare" (part 1)
-	#define LACT_OC_CLEAR2		TCCR0 |= (0<<COM01)					// Switch to "Clear OC pin on compare" (part 2)
-	#define LACT_OC_TOGGLE1		TCCR0 |= (1<<COM00)					// Switch to "Toggle OC pin on compare" (part 1)
-	#define LACT_OC_TOGGLE2		TCCR0 &= ~(0<<COM01)				// Switch to "Toggle OC pin on compare" (part 2)
+	#define LACT_OC_CLEAR1		TCCR0 &= ~((1<<COM00)|(1<<COM01))	// Switch to "Clear OC pin on compare" (part 1)
+	#define LACT_OC_CLEAR2		TCCR0 |= (1<<COM01)					// Switch to "Clear OC pin on compare" (part 2)
+	#define LACT_OC_TOGGLE1		TCCR0 &= ~((1<<COM00)|(1<<COM01))	// Switch to "Toggle OC pin on compare" (part 1)
+	#define LACT_OC_TOGGLE2		TCCR0 |= (1<<COM00)					// Switch to "Toggle OC pin on compare" (part 2)
 	#define LACT_OC_FORCE		TCCR0 |= (1<<FOC0)					// Force OC event
 	#define LACT_DATA			TCNT0								// Count register
 	#define LACT_PULSE_DUR		OCR0								// Compare register
 	#define LACT_CONFIG_PIN1	PORTB &= ~(1<<3)					// OC pin port
 	#define LACT_CONFIG_PIN2	DDRB |= (1<<3)						// OC pin direction
-#endif
+#endif /* FGR_DRV_IO_M8 */
+
+#ifdef CONF_EN_HD44780
+#define HD44780CTRL_DIR		DDRA
+#define HD44780CTRL_PORT	PORTA
+#define HD44780DATA_DIR		DDRC
+#define HD44780DATA_PORT	PORTC
+#define HD44780DATA_SRC		PINC
+#define HD44780_A0			(1<<5)
+#define HD44780_RW			(1<<6)
+#define HD44780_E			(1<<7)
+#define HD44780_D4			(1<<5)
+#define HD44780_D5			(1<<4)
+#define HD44780_D6			(1<<3)
+#define HD44780_D7			(1<<2)
+#endif /* CONF_EN_HD44780 */
 
 // Watchdog setup.
 #ifdef FGR_DRV_IO_M8
@@ -131,7 +159,7 @@
 	#define WDT_FLUSH_REASON	MCUCSR = (0<<JTRF)|(0<<WDRF)|(0<<BORF)|(0<<EXTRF)|(0<<EXTRF)	// Clear reason for MCU reset
 	#define WDT_PREP_ON			WDTCR |= (1<<WDTOE)|(1<<WDE)						// Prepare to turn Watchdog ON
 	#define WDT_SW_ON			WDTCR = (1<<WDE)|(1<<WDP0)|(1<<WDP1)|(1<<WDP2)		// Turn Watchdog ON, MCU reset after ~2.0 s
-#endif
+#endif /* FGR_DRV_IO_M8 */
 
 // Power consumption optimizations.
 #define PWR_COMP_OFF			ACSR |= (1<<ACD)			// Turn off Analog Comparator
@@ -245,6 +273,8 @@ inline void HW_init(void)
 #ifdef FGR_DRV_IO_T0OC_HW_FOUND
 	// Configure active line timer.
 	LACT_CONFIG_REG1; LACT_CONFIG_REG2;
+	// Force OC pin LOW (workaround for skewed timing to prevent H-sync corruption).
+	LACT_OC_FORCE;
 	LACT_PULSE_DUR = 100;
 	LACT_EN_INTR;
 #endif

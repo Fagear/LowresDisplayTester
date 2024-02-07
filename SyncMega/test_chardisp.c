@@ -1,10 +1,3 @@
-/*
- * test_chardisp.c
- *
- * Created: 01.02.2024 17:18:15
- *  Author: kryukov
- */ 
-
 #include "test_chardisp.h"
 
 #ifdef CONF_EN_CHARDISP

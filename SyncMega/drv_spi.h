@@ -1,14 +1,28 @@
-﻿/*
- * drv_SPI.h
- *
- * Created:			2016-09-26 14:27:03
- * Modified:		2022-05-20
- * Author:			Maksim Kryukov aka Fagear (fagear@mail.ru)
- * Description:		SPI and SPI-through-UART driver for AVR MCUs and AVRStudio/WinAVR/AtmelStudio compilers.
- *
- * Supported MCUs:	ATmega8(-/A), ATmega16(-/A), ATmega32(-/A), ATmega48(-/A/P/AP), ATmega88(-/A/P/AP), ATmega168(-/A/P/AP), ATmega328(-/P).
- *
- */
+﻿/**************************************************************************************************************************************************************
+drv_spi.h
+
+Copyright © 2024 Maksim Kryukov <fagear@mail.ru>
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+Created: 2016-09
+
+Part of the [LowresDisplayTester] project.
+SPI and SPI-through-UART driver for AVR MCUs and AVRStudio/WinAVR/AtmelStudio compilers.
+
+Supported MCUs:	ATmega8(-/A), ATmega16(-/A), ATmega32(-/A), ATmega48(-/A/P/AP), ATmega88(-/A/P/AP), ATmega168(-/A/P/AP), ATmega328(-/P).
+
+**************************************************************************************************************************************************************/
 
 #ifndef FGR_DRV_SPI_H_
 #define FGR_DRV_SPI_H_
