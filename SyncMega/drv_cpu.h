@@ -1,5 +1,5 @@
 /*
- * drv_EEPROM.h
+ * drv_cpu.h
  *
  * Created:			2009-04-03
  * Modified:		2017-09-27
@@ -12,7 +12,6 @@
 #define FR_DRV_CPU		1
 
 #define F_CPU		16000000UL 	 // MCU core clock: 16 MHz
-#define NOP			asm volatile("nop\n")		// Skip a clock.
 #define SLEEP		asm volatile("sleep\n")		// Enter sleep mode.
 
 // Simple interrupt header and footer if [ISR_NAKED] is used.

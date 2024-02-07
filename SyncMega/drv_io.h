@@ -18,9 +18,13 @@
 #undef FGR_DRV_I2C_HW_FOUND
 
 #include <avr/io.h>
-#include "drv_hd44780[4bit].h"
+#include "config.h"
 #include "drv_i2c.h"
 #include "drv_spi.h"
+
+#ifdef CONF_EN_HD44780
+	
+#endif /* CONF_EN_HD44780 */
 
 #if SIGNATURE_1 == 0x92
 	#if SIGNATURE_2 == 0x05			// ATmega48, ATmega48A
@@ -72,6 +76,7 @@
 	#warning I2C driver not found!
 #endif
 
+	// Horizontal clocks
 	// 16000000 / 508 = 8000000 / 254 = 4000000 / 127 = 31496 (31476)
 	// 16000000 / 1024 = 8000000 / 512 = 4000000 / 256 = 2000000 / 128 = 1000000 / 64 = 15625
 	// 16000000 / 1017 = 0 (15734,279)

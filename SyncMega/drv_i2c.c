@@ -11,6 +11,8 @@ static uint8_t
 	u8_i2c_current_byte = 0,			// Number of current byte in transmittion
 	u8a_i2c_buffer[I2C_MAX_SEND_LEN];	// Buffer for I2C transmittions
 
+extern void __builtin_avr_delay_cycles(unsigned long);
+
 void I2C_set_speed(uint16_t in_spd)
 {
 	I2C_BITRATE = (F_CPU/1000/in_spd-16)/2;
@@ -58,7 +60,7 @@ void I2C_master_processor(void)
 		u8_i2c_mode = I2C_MODE_IDLE;
 		u8_i2c_total_bytes = 0;
 		u8_i2c_current_byte = 0;
-		NOP;
+		__builtin_avr_delay_cycles(1);
 		I2C_SW_OFF;
 		// Manage online/offline state of the counter.
 		if(u8_i2c_error_counter<I2C_MAX_ERRORS) u8_i2c_error_counter++;

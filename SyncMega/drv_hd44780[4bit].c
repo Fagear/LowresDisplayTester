@@ -1,5 +1,7 @@
 #include "drv_hd44780[4bit].h"
 
+#ifdef CONF_EN_HD44780
+
 uint8_t disp_resolution = HD44780_RES_8X1,
 	disp_cyr = HD44780_CYR_NOCONV;
 	
@@ -12,8 +14,9 @@ uint8_t disp_shift_stage,
 int8_t arr_page1[HD44780_MAX_COL][HD44780_MAX_ROWS],
 	arr_page2[HD44780_MAX_COL][HD44780_MAX_ROWS];
 int8_t (*ptr_output)[HD44780_MAX_ROWS], (*ptr_input)[HD44780_MAX_ROWS];
-#endif	// HD44780_USE_SCREEN_BUFFERS
+#endif	/* HD44780_USE_SCREEN_BUFFERS */
 
+#ifdef HD44780_RU_REENCODE
 // Char set conversion table for Cyrillic displays without CP1251 support.
 const int8_t hd44780_cyr_conv_tbl[] PROGMEM =
 {
@@ -25,6 +28,9 @@ const int8_t hd44780_cyr_conv_tbl[] PROGMEM =
 	0x61, 0xB2, 0xB3, 0xB4, 0xE3, 0x65, 0xB6, 0xB7, 0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0x6F, 0xBE, 	// 0xE_
 	0x70, 0x63, 0xBF, 0x79, 0xE4, 0x78, 0xE5, 0xC0, 0xC1, 0xE6, 0xC2, 0xC3, 0xC4, 0xC5, 0xC6, 0xC7		// 0xF_
 };
+#endif /* HD44780_RU_REENCODE */
+
+extern void __builtin_avr_delay_cycles(unsigned long);
 
 //-------------------------------------- Setup options for HD44780-compatible display.
 uint8_t HD44780_setup(uint8_t disp_res, uint8_t cyr_conv)
@@ -58,7 +64,7 @@ uint8_t HD44780_init(void)
 		// Pin "E" set high.
 		HD44780CTRL_PORT |= HD44780_E;
 		// >230ns delay to hold E output.
-		NOP; NOP; NOP; NOP; NOP; NOP;	// One NOP @20 MHz = 50 ns
+		_delay_us(1);
 		// Pin "E" set low.
 		HD44780CTRL_PORT &= ~HD44780_E;
 		// >4.1ms delay.
@@ -69,7 +75,7 @@ uint8_t HD44780_init(void)
 	// Pin "E" set high.
 	HD44780CTRL_PORT |= HD44780_E;
 	// >230ns delay.
-	NOP; NOP; NOP; NOP; NOP; NOP;	// One NOP @20 MHz = 50 ns
+	_delay_us(1);
 	// Pin "E" set low.
 	HD44780CTRL_PORT &= ~HD44780_E;
 	// >40us delay.
@@ -80,13 +86,10 @@ uint8_t HD44780_init(void)
 	// Set 4-bit transfer mode (4-bit), 2-line display, 5x8 font.
 	error_collector += HD44780_write_byte(HD44780_CMD_FUNC|HD44780_FUNC_2LINE, HD44780_CMD);
 	// Turn display on and set no cursor, no blinking.
-	//error_collector += HD44780_write_byte(0b00001100, HD44780_CMD);
 	error_collector += HD44780_write_byte(HD44780_CMD_DISP|HD44780_DISP_SCREEN, HD44780_CMD);
 	// Clear display.
-	//error_collector += HD44780_write_byte(0b00000001, HD44780_CMD);
 	error_collector += HD44780_write_byte(HD44780_CMD_CLR, HD44780_CMD);
 	// Set cursor shift: "right".
-	//error_collector += HD44780_write_byte(0b00000110, HD44780_CMD);
 	error_collector += HD44780_write_byte(HD44780_CMD_ENTRY|HD44780_ENTRY_RIGHT, HD44780_CMD);
 #ifdef HD44780_USE_SCREEN_BUFFERS
 	// Clear buffers.
@@ -166,59 +169,63 @@ uint8_t HD44780_rows(void)
 //-------------------------------------- Wait for display to become ready or abort by timeout.
 uint8_t HD44780_wait_ready(void)
 {
-	uint8_t disp_state, cycle_cnt = 0;
+	uint8_t disp_state, cycle_cnt = HD44780_MAX_TRIES;
 	
-	// Enable pull-up on data bus.
-	HD44780DATA_PORT |= HD44780_D7;
-	// Set data bus as input.
-	HD44780DATA_DIR &= ~(HD44780_D4|HD44780_D5|HD44780_D6|HD44780_D7);
 	// Pin "R/W" set "1" to read status.
 	HD44780CTRL_PORT &= ~HD44780_A0;
 	HD44780CTRL_PORT |= HD44780_RW;
-	// >40ns delay between "R/W" and "E" and let AVR input pull up.
-	NOP; NOP; NOP; NOP;
+	// >60ns delay between "R/W" and "E" and let AVR input pull up.
+	// One NOP @20 MHz = 50 ns.
+	__builtin_avr_delay_cycles(2);
 	// Try in cycle.
-	while(cycle_cnt<HD44780_MAX_TRIES)
+	while(cycle_cnt>0)
 	{
 		// Set "E" pin high.
 		HD44780CTRL_PORT |= HD44780_E;
-		// >230ns delay and let AVR input to stabilize.
-		NOP; NOP; NOP;
+		// Enable pull-up on data bus.
+		HD44780DATA_PORT |= HD44780_D7;
+		// Set data bus as input.
+		HD44780DATA_DIR &= ~(HD44780_D4|HD44780_D5|HD44780_D6|HD44780_D7);
+		// >=360ns delay (wait for data delay, td>=360ns).
+		// One NOP @20 MHz = 50 ns.
+		__builtin_avr_delay_cycles(8);
 		// Check display readiness.
 		disp_state = (HD44780DATA_SRC&HD44780_D7);
 		if(disp_state!=0)
 		{
 			// Display not ready yet (or does not exist), increase counter.
-			cycle_cnt++;
+			cycle_cnt--;
 		}
 		// Finish two-cycle byte-reading procedure.
+		// >=100ns delay (to complete minimum E up time, tw>=450ns).
+		// One NOP @20 MHz = 50 ns.
+		__builtin_avr_delay_cycles(2);
 		// Set "E" pin low.
 		HD44780CTRL_PORT &= ~HD44780_E;
-		// >270ns delay.
-		NOP; NOP; NOP; NOP; NOP; NOP;
+		// >=550ns delay (to complete full E cycle, tc>=1000ns).
+		// One NOP @20 MHz = 50 ns.
+		__builtin_avr_delay_cycles(12);
 		// Set "E" pin high.
 		HD44780CTRL_PORT |= HD44780_E;
-		// >230ns delay.
-		NOP; NOP; NOP; NOP; NOP;
+		// >=450ns delay (wait E pulse width, tw>=450ns).
+		// One NOP @20 MHz = 50 ns.
+		__builtin_avr_delay_cycles(10);
 		// Set "E" pin low.
 		HD44780CTRL_PORT &= ~HD44780_E;
-		// >270ns delay.
-		NOP; NOP; NOP; NOP; NOP; NOP;
+		// >=550ns delay (to complete full E cycle, tc>=1000ns).
+		// One NOP @20 MHz = 50 ns.
+		__builtin_avr_delay_cycles(12);
+		// Disable pull-up.
+		HD44780DATA_PORT &= ~HD44780_D7;
 		if(disp_state==0)
 		{
 			// Display is ready, stop cycle.
 			break;
 		}
-		// Disable pullup.
-		HD44780DATA_PORT &= ~HD44780_D7;
 		// Set data bus as output.
 		HD44780DATA_DIR |= (HD44780_D4|HD44780_D5|HD44780_D6|HD44780_D7);
 		// Wait for the display to become ready.
-		_delay_us(10);
-		// Enable pull-up on data bus.
-		HD44780DATA_PORT |= HD44780_D7;
-		// Set data bus as input.
-		HD44780DATA_DIR &= ~(HD44780_D4|HD44780_D5|HD44780_D6|HD44780_D7);
+		_delay_us(20);
 	}
 	// Disable pull-up on data bus.
 	HD44780DATA_PORT &= ~(HD44780_D4|HD44780_D5|HD44780_D6|HD44780_D7);
@@ -244,18 +251,20 @@ uint8_t HD44780_write_byte(const uint8_t send_data, const uint8_t send_mode)
 	if(HD44780_wait_ready()==HD44780_OK)
 	{
 		// Pin "R/W" set low to write data.
+		HD44780CTRL_PORT &= ~HD44780_E;
 		HD44780CTRL_PORT &= ~HD44780_RW;
 		// Pin "A0" set by [send_mode] parameter.
-		disp_data = send_data;
 		if(send_mode==HD44780_CMD)
 		{
 			// Sending command to display controller.
 			HD44780CTRL_PORT &= ~HD44780_A0;
+			disp_data = send_data;
 		}
 		else
 		{
 			// Sending data byte to display controller.
 			HD44780CTRL_PORT |= HD44780_A0;
+			disp_data = send_data;
 			// Check if it is needed to modify byte.
 			if(send_mode==HD44780_NONZERO_DIGIT)
 			{
@@ -270,7 +279,7 @@ uint8_t HD44780_write_byte(const uint8_t send_data, const uint8_t send_mode)
 					// Non-zero symbols.
 					if(disp_data>9)
 					{
-						// It's not a single digit! Draw a ASCII hash.
+						// It's not a single digit! Draw a ASCII overflow filler.
 						disp_data = ASCII_OVF;
 					}
 					else
@@ -294,6 +303,7 @@ uint8_t HD44780_write_byte(const uint8_t send_data, const uint8_t send_mode)
 					disp_data = disp_data+ASCII_ZERO;
 				}
 			}
+#ifdef HD44780_RU_REENCODE
 			else if(disp_cyr!=HD44780_CYR_NOCONV)
 			{
 				// Need to convert CP1251 Cyrillic character for non-CP1251 Cyrillic display.
@@ -302,6 +312,7 @@ uint8_t HD44780_write_byte(const uint8_t send_data, const uint8_t send_mode)
 					disp_data = pgm_read_byte_near(hd44780_cyr_conv_tbl+disp_data);
 				}
 			}
+#endif /* HD44780_RU_REENCODE */
 		}
 		bus_state = 0;
 		// Select bits to pull up on the data bus.
@@ -326,9 +337,14 @@ uint8_t HD44780_write_byte(const uint8_t send_data, const uint8_t send_mode)
 		HD44780CTRL_PORT |= HD44780_E;
 		// Send first half-byte to display data bus.
 		HD44780DATA_PORT |= bus_state;
-		NOP; NOP; NOP; NOP; NOP;
+		// >=450ns delay (wait for minimum E pulse width, tw>=450ns).
+		// One NOP @20 MHz = 50 ns.
+		__builtin_avr_delay_cycles(10);
 		// Set "E" pin low.
 		HD44780CTRL_PORT &= ~HD44780_E;
+		// >=10ns delay (th2>=10ns).
+		// One NOP @20 MHz = 50 ns.
+		__builtin_avr_delay_cycles(1);
 		bus_state = 0;
 		// Select bits to pull up on the data bus.
 		if((disp_data&(1<<0))!=0)
@@ -349,19 +365,28 @@ uint8_t HD44780_write_byte(const uint8_t send_data, const uint8_t send_mode)
 		}
 		// Clear data bus.
 		HD44780DATA_PORT &= ~(HD44780_D4|HD44780_D5|HD44780_D6|HD44780_D7);
+		// >=500ns delay (to complete full E cycle, tc>=1000ns).
+		// One NOP @20 MHz = 50 ns.
+		__builtin_avr_delay_cycles(10);
 		// Set "E" pin high.
 		HD44780CTRL_PORT |= HD44780_E;
 		// Send second half-byte to display data bus.
 		HD44780DATA_PORT |= bus_state;
-		// >230ns delay.
-		NOP; NOP; NOP; NOP; NOP;
+		// >=450ns delay (wait for minimum E pulse width, tw>=450ns).
+		// One NOP @20 MHz = 50 ns.
+		__builtin_avr_delay_cycles(10);
 		// Set "E" pin low.
 		HD44780CTRL_PORT &= ~HD44780_E;
-		// >270ns delay.
-		NOP; NOP; NOP; NOP; NOP; NOP;
-		// Clear data and control buses.
-		HD44780CTRL_PORT &= ~(HD44780_A0|HD44780_RW|HD44780_E);
+		// >=10ns delay (th2>=10ns).
+		// One NOP @20 MHz = 50 ns.
+		__builtin_avr_delay_cycles(1);
+		// Clear data bus.
 		HD44780DATA_PORT &= ~(HD44780_D4|HD44780_D5|HD44780_D6|HD44780_D7);
+		// >=400ns delay (to complete full E cycle, tc>=1000ns).
+		// One NOP @20 MHz = 50 ns.
+		__builtin_avr_delay_cycles(8);
+		// Clear control bus.
+		HD44780CTRL_PORT &= ~(HD44780_A0|HD44780_RW|HD44780_E);
 		// Everything went fine.
 		return HD44780_OK;
 	}
@@ -370,6 +395,12 @@ uint8_t HD44780_write_byte(const uint8_t send_data, const uint8_t send_mode)
 		// Return error code (BUSY wait fail).
 		return HD44780_ERR_BUSY;
 	}
+}
+
+//-------------------------------------- Write a data byte to the display.
+uint8_t HD44780_write_data_byte(const uint8_t send_data)
+{
+	return HD44780_write_byte(send_data, HD44780_DATA);
 }
 
 //-------------------------------------- Read a byte from the display.
@@ -382,14 +413,16 @@ uint8_t HD44780_read_byte(uint8_t *read_result)
 	{
 		// Set "A0" pin high.
 		HD44780CTRL_PORT |= HD44780_A0;
-		// >40ns delay.
-		NOP;
+		// 60ns delay (RW to E setup, tsu>=60ns).
+		// One NOP @20 MHz = 50 ns.
+		__builtin_avr_delay_cycles(2);
 		// Set "E" pin high.
 		HD44780CTRL_PORT |= HD44780_E;
 		// Set data bus as input.
 		HD44780DATA_DIR &= ~(HD44780_D4|HD44780_D5|HD44780_D6|HD44780_D7);
-		// >=120ns delay.
-		NOP; NOP; NOP;
+		// >=360ns delay (wait for data delay, td>=360ns).
+		// One NOP @20 MHz = 50 ns.
+		__builtin_avr_delay_cycles(8);
 		// Reading first half-byte.
 		bus_state = HD44780DATA_SRC&(HD44780_D4|HD44780_D5|HD44780_D6|HD44780_D7);
 		if((bus_state&HD44780_D7)!=0)
@@ -400,14 +433,19 @@ uint8_t HD44780_read_byte(uint8_t *read_result)
 			disp_data |= (1<<5);
 		if((bus_state&HD44780_D4)!=0)
 			disp_data |= (1<<4);
+		// >=100ns delay (to complete minimum E up time, tw>=450ns).
+		// One NOP @20 MHz = 50 ns.
+		__builtin_avr_delay_cycles(2);
 		// Set "E" pin low.
 		HD44780CTRL_PORT &= ~HD44780_E;
-		// >270ns delay.
-		NOP; NOP; NOP; NOP; NOP; NOP;
+		// >=550ns delay (to complete full E cycle, tc>=1000ns).
+		// One NOP @20 MHz = 50 ns.
+		__builtin_avr_delay_cycles(12);
 		// Set "E" pin high.
 		HD44780CTRL_PORT |= HD44780_E;
-		// >=120ns delay.
-		NOP; NOP; NOP;
+		// >=360ns delay (wait for data delay, td>=360ns).
+		// One NOP @20 MHz = 50 ns.
+		__builtin_avr_delay_cycles(8);
 		// Reading second half-byte.
 		bus_state = HD44780DATA_SRC&(HD44780_D4|HD44780_D5|HD44780_D6|HD44780_D7);
 		if((bus_state&HD44780_D7)!=0)
@@ -418,10 +456,14 @@ uint8_t HD44780_read_byte(uint8_t *read_result)
 			disp_data |= (1<<1);
 		if((bus_state&HD44780_D4)!=0)
 			disp_data |= (1<<0);
+		// >=100ns delay (to complete minimum E up time, tw>=450ns).
+		// One NOP @20 MHz = 50 ns.
+		__builtin_avr_delay_cycles(2);
 		// Set "E" pin low.
 		HD44780CTRL_PORT &= ~HD44780_E;
-		// >270ns delay.
-		NOP; NOP; NOP; NOP; NOP; NOP;
+		// >=550ns delay (to complete full E cycle, tc>=1000ns).
+		// One NOP @20 MHz = 50 ns.
+		__builtin_avr_delay_cycles(12);
 		// Disable pull-up on data bus.
 		HD44780DATA_PORT &= ~(HD44780_D4|HD44780_D5|HD44780_D6|HD44780_D7);
 		// Set data bus as output.
@@ -571,6 +613,8 @@ uint8_t HD44780_shorttest(void)
 	// Restore symbol into RAM.
 	HD44780_set_xy_position(0x27, 0);
 	HD44780_write_byte(saved_byte, HD44780_DATA);
+	
+	return 0;
 }
 
 //-------------------------------------- Upload user-defined symbol.
@@ -1054,3 +1098,5 @@ inline uint8_t HD44780_buf_clear_line(const uint8_t line_idx)
 	return HD44780_OK;
 }
 #endif	// HD44780_USE_SCREEN_BUFFERS
+
+#endif /* CONF_EN_HD44780 */

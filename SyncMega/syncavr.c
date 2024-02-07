@@ -1,5 +1,5 @@
 /*
- * atm.c
+ * syncavr.c
  *
  * Created:			2022-05-04 11:56:23
  * Modified:		2022-05-20
@@ -9,142 +9,121 @@
 
 #include "syncavr.h"
 
-volatile uint8_t tasks = 0;
+volatile uint8_t tasks = 0;		// System tasks.
 uint8_t disp_presence = 0;		// Flags for detected displays types
 uint8_t active_region = 0;		// Flag for lines in active region.
+volatile uint8_t act_delay = COMP_ACT_DELAY_625i;		// Active line start delay from H-sync (for clearing interrupt from IFs).
 uint16_t sync_step_cnt = 0;		// Current step in sync generator logic.
+volatile uint16_t sync_step_limit = 0;	// Maximum step number for selected video system.
 uint16_t frame_line_cnt = 0;	// Number of current line in the frame.
-uint8_t video_sys = COMP_625i;	// Video system value, used in interrupt (buffered).
-uint8_t usr_video = COMP_625i;	// Video system value set by user.
+uint8_t video_sys = MODE_COMP_625i;	// Video system value, used in interrupt (buffered).
+uint8_t usr_video = MODE_COMP_625i;	// Video system value set by user.
+uint8_t usr_act_delay = COMP_ACT_DELAY_625i;	// Active line start delay from H-sync for user-selected video system.
+uint8_t usr_act_time = COMP_ACT_LEN_625i;	// Active line length for user-selected video system (for clearing interrupt from IFs).
 uint16_t dbg_index = 0;
-uint8_t hd44780_page_step = 0;
-uint8_t hd44780_ani_step = 0;
 uint8_t kbd_state = 0;			// Buttons states from the last [keys_simple_scan()] poll.
 uint8_t kbd_pressed = 0;		// Flags for buttons that have been pressed (should be cleared after processing).
 uint8_t kbd_released = 0;		// Flags for buttons that have been released (should be cleared after processing).
-uint8_t comp_data_idx = 0;		// Index for vertical bar groups.
+volatile uint8_t comp_data_idx = 0;		// Index for vertical bar groups.
 
 volatile const uint8_t ucaf_compile_time[] PROGMEM = __TIME__;		// Time of compilation
-volatile const uint8_t ucaf_info[] PROGMEM = "ATmega sync generator";							// Firmware description
-volatile const uint8_t ucaf_version[] PROGMEM = "v0.04";			// Firmware version
 volatile const uint8_t ucaf_compile_date[] PROGMEM = __DATE__;		// Date of compilation
+volatile const uint8_t ucaf_version[] PROGMEM = "v0.05";			// Firmware version
 volatile const uint8_t ucaf_author[] PROGMEM = "Maksim Kryukov aka Fagear (fagear@mail.ru)";	// Author
+volatile const uint8_t ucaf_info[] PROGMEM = "ATmega sync gen/display tester";					// Firmware description
 
-//-------------------------------------- Composite horizontal sync timing.
+//-------------------------------------- Horizontal active region timing management (each H-line).
 ISR(INT0_INT)
-{
-	DBG_1_ON;
-	
-	if(sync_step_cnt==0)
-	{
-		// Produce pulse on the start of the frame.
-		DBG_4_ON;
-		tasks |= TASK_UPDATE_ASYNC;
-		// Update video system to user's choice.
-		video_sys = usr_video;
-#ifdef FGR_DRV_IO_T0OC_HW_FOUND
-		if(video_sys==COMP_625i)
-		{
-			// Apply length of the active part of the line for composite 625i.
-			LACT_PULSE_DUR = LINE_625i_ACT;
-		}
-		else if(video_sys==COMP_525i)
-		{
-			// Apply length of the active part of the line for composite 525i.
-			LACT_PULSE_DUR = LINE_525i_ACT;
-		}
-		else if(video_sys==COMP_525i)
-		{
-			// Apply length of the active part of the line for VGA 640x480@60.
-			LACT_PULSE_DUR = LINE_VGA_ACT;
-		}
-#endif
-		DBG_4_OFF;
-	}
+{	
 	/*if(frame_line_cnt==(dbg_index-1))
 	{
 		// Produce pulse for selected video line.
 		DBG_5_ON;
-		NOP;
+		__builtin_avr_delay_cycles(1);
 		DBG_5_OFF;
 	}*/
-	
-	// Check if current line is in active region.
+	DBG_2_ON;
+	// Check if current line is in vertical active region.
 	if(active_region!=0)
 	{
 #ifdef FGR_DRV_IO_T0OC_HW_FOUND
-		// Force OC pin LOW (workaround for skewed timing to prevent Hsync damage).
+		LACT_STOP;
+		// Force OC pin LOW (workaround for skewed timing to prevent H-sync corruption).
 		LACT_OC_FORCE;
 		// Switch to "Toggle OC pin on compare" to allow pin to be switched HIGH from forced LOW.
 		LACT_OC_TOGGLE1; LACT_OC_TOGGLE2;
 #endif
 		// Wait for active line part start.
-		if((video_sys==COMP_625i)||(video_sys==COMP_525i))
+		do
 		{
-			while(VTIM_DATA<COMP_ACT_DELAY)
-			{
-				NOP;
-			}
+			__builtin_avr_delay_cycles(0);
 		}
-		else if(video_sys==VGA_60Hz)
-		{
-			while(VTIM_DATA<50)
-			{
-				NOP;
-			}
-		}
+		while(SYNC_DATA<act_delay);
 #ifdef FGR_DRV_IO_T0OC_HW_FOUND
 		// Force OC pin HIGH from LOW.
 		LACT_OC_FORCE;
 		// Switch to "Clear OC pin on compare" to ensure that OC pin will be switched OFF when timer runs out.
 		LACT_OC_CLEAR1; LACT_OC_CLEAR2;
 		// Start line active region timer.
-		LACT_START;
+		LACT_DATA = 0; LACT_START;
 #endif
 #ifdef FGR_DRV_SPI_HW_FOUND
-		// Set minimal frequency for first set of vertical bars.
-		SPI_set_target_clock(BAR_FREQ_500Hz);
-		comp_data_idx = 0;
-		// Start drawing first set of vertical bars.
-		SPI_DATA = SPI_DUMMY_SEND;
+		if((active_region&ACT_MN_LINES)!=0)
+		{
+			comp_data_idx = 0;
+			// Set minimal frequency for first set of vertical bars.
+			//SPI_set_target_clock(BAR_FREQ_500Hz);
+			SPI_CONTROL &= ~(1<<SPR0);
+			SPI_CONTROL |= (1<<SPR1);
+			SPI_STATUS = (1<<SPI2X);
+			// Start drawing first set of vertical bars.
+			SPI_DATA = SPI_DUMMY_SEND;
+		}
+		else if((active_region&ACT_RGB_LINES)!=0)
+		{
+			//SPI_set_target_clock(BAR_FREQ_4MHz);
+			SPI_CONTROL &= ~((1<<SPR1)|(1<<SPR0));
+			SPI_STATUS &= ~(1<<SPI2X);
+			// Start drawing first set of vertical bars.
+			SPI_DATA = SPI_DUMMY_SEND;
+		}
 #endif /* FGR_DRV_SPI_HW_FOUND */
 	}
-	// Allow timer overflow interrupt to active after this one.
-	VTIM_EN_INTR;
-	DBG_1_OFF;
+	// Allow timer overflow interrupt to activate after this one.
+	SYNC_EN_INTR;
+	DBG_2_OFF;
 }
 
-//-------------------------------------- Video horizontal sync timing.
-ISR(VTIM_INT)
+//-------------------------------------- Video sync timing (horizontal/composite).
+ISR(SYNC_INT)
 {
-	DBG_2_ON;
-	if(video_sys==COMP_625i)
+	DBG_3_ON;
+	if(video_sys==MODE_COMP_625i)
 	{
 		// 625i
 		if((sync_step_cnt>=ST_COMP625_F2_EQ_START)||(sync_step_cnt<=ST_COMP625_F1_EQ_STOP))
 		{
-			// First field sync.
+			// First field vertical sync.
 			if(sync_step_cnt==ST_COMP625_F1_VS_STOP)
 			{
 				// Post-equalizing pulses.
-				VTIM_PULSE_DUR = COMP_EQ_PULSE_LEN_625i;
+				SYNC_PULSE_DUR = COMP_EQ_PULSE_LEN_625i;
 			}
 			else if(sync_step_cnt==ST_COMP625_F1_EQ_STOP)
 			{
 				// Normal line (horizontal) sync pulse period.
-				//VTIM_STEP_DUR = COMP_LINE_LEN_625i;
-				VTIM_PULSE_DUR = COMP_SYNC_H_LEN_625i;
+				SYNC_PULSE_DUR = COMP_SYNC_H_LEN_625i;
 			}
 			else if(sync_step_cnt==ST_COMP625_F2_EQ_START)
 			{
 				// Pre-equalizing pulses.
-				VTIM_STEP_DUR = COMP_HALF_LEN_625i;
-				VTIM_PULSE_DUR = COMP_EQ_PULSE_LEN_625i;
+				SYNC_STEP_DUR = COMP_HALF_LEN_625i;
+				SYNC_PULSE_DUR = COMP_EQ_PULSE_LEN_625i;
 			}
 			else if(sync_step_cnt==ST_COMP625_LOOP)
 			{
 				// Pre-load half-line configuration one line before the vertical sync.
-				VTIM_PULSE_DUR = COMP_SYNC_V_LEN_625i;
+				SYNC_PULSE_DUR = COMP_SYNC_V_LEN_625i;
 			}
 			if((sync_step_cnt%2)!=0)
 			{
@@ -154,22 +133,21 @@ ISR(VTIM_INT)
 		}
 		else if((sync_step_cnt>ST_COMP625_F1_EQ_START)&&(sync_step_cnt<ST_COMP625_F2_EQ_STOP))
 		{
-			// Second field sync.
+			// Second field vertical sync.
 			if(sync_step_cnt==(ST_COMP625_F1_EQ_START+1))
 			{
 				// Pre-equalizing pulses.
-				VTIM_STEP_DUR = COMP_HALF_LEN_625i;
-				//VTIM_PULSE_DUR = COMP_EQ_PULSE_LEN_625i;
+				SYNC_STEP_DUR = COMP_HALF_LEN_625i;
 			}
 			else if(sync_step_cnt==ST_COMP625_F2_VS_START)
 			{
 				// Frame (vertical) sync.
-				VTIM_PULSE_DUR = COMP_SYNC_V_LEN_625i;
+				SYNC_PULSE_DUR = COMP_SYNC_V_LEN_625i;
 			}
 			else if(sync_step_cnt==ST_COMP625_F2_VS_STOP)
 			{
 				// Post-equalizing pulses.
-				VTIM_PULSE_DUR = COMP_EQ_PULSE_LEN_625i;
+				SYNC_PULSE_DUR = COMP_EQ_PULSE_LEN_625i;
 			}
 			if((sync_step_cnt%2)==0)
 			{
@@ -183,19 +161,18 @@ ISR(VTIM_INT)
 			if(sync_step_cnt==(ST_COMP625_F1_EQ_STOP+1))
 			{
 				// Normal line (horizontal) sync pulse period.
-				VTIM_STEP_DUR = COMP_LINE_LEN_625i;
-				//VTIM_PULSE_DUR = COMP_SYNC_H_LEN_625i;
+				SYNC_STEP_DUR = COMP_LINE_LEN_625i;
 			}
 			else if(sync_step_cnt==ST_COMP625_F1_EQ_START)
 			{
 				// Pre-equalizing pulses.
-				VTIM_PULSE_DUR = COMP_EQ_PULSE_LEN_625i;
+				SYNC_PULSE_DUR = COMP_EQ_PULSE_LEN_625i;
 			}
 			else if(sync_step_cnt==ST_COMP625_F2_EQ_STOP)
 			{
 				// Delay normal width sync pulse one line.
-				VTIM_STEP_DUR = COMP_LINE_LEN_625i;
-				VTIM_PULSE_DUR = COMP_SYNC_H_LEN_625i;
+				SYNC_STEP_DUR = COMP_LINE_LEN_625i;
+				SYNC_PULSE_DUR = COMP_SYNC_H_LEN_625i;
 			}
 			// When not on frame sync, count step as line.
 			frame_line_cnt++;
@@ -203,23 +180,17 @@ ISR(VTIM_INT)
 		if((frame_line_cnt==ST_COMP625_F1_ACT_START)||(frame_line_cnt==ST_COMP625_F2_ACT_START))
 		{
 			// Enable drawing in active region.
-			active_region = 1;
+			active_region |= (ACT_RUN|ACT_MN_LINES);
 		}
 		else if((frame_line_cnt==ST_COMP625_F1_ACT_STOP)||(frame_line_cnt==ST_COMP625_F2_ACT_STOP))
 		{
 			// Disable drawing in inactive region.
 			active_region = 0;
 		}
-		// Go through steps.
-		sync_step_cnt++;
-		if(sync_step_cnt>ST_COMP625_LOOP)
-		{
-			// Loop line counter within one frame.
-			frame_line_cnt = 0;
-			sync_step_cnt = 0;
-		}
+		// Set maximum step count.
+		sync_step_limit = ST_COMP625_LOOP;
 	}
-	else if(video_sys==COMP_525i)
+	else if(video_sys==MODE_COMP_525i)
 	{
 		// 525i
 		if(sync_step_cnt<=ST_COMP525_F1_EQ_STOP)
@@ -234,22 +205,22 @@ ISR(VTIM_INT)
 			if(sync_step_cnt==ST_COMP525_F1_EQ_START)
 			{
 				// Pre-load equalizing pulse configuration one line before.
-				VTIM_STEP_DUR = COMP_HALF_LEN_525i;
+				SYNC_STEP_DUR = COMP_HALF_LEN_525i;
 			}
 			else if(sync_step_cnt==ST_COMP525_F1_VS_START)
 			{
 				// Frame (vertical) sync.
-				VTIM_PULSE_DUR = COMP_SYNC_V_LEN_525i;
+				SYNC_PULSE_DUR = COMP_SYNC_V_LEN_525i;
 			}
 			else if(sync_step_cnt==ST_COMP525_F1_VS_STOP)
 			{
 				// Post-equalizing pulses.
-				VTIM_PULSE_DUR = COMP_EQ_PULSE_LEN_525i;
+				SYNC_PULSE_DUR = COMP_EQ_PULSE_LEN_525i;
 			}
 			else if(sync_step_cnt==ST_COMP525_F1_EQ_STOP)
 			{
 				// Normal line (horizontal) sync pulse period.
-				VTIM_PULSE_DUR = COMP_SYNC_H_LEN_525i;
+				SYNC_PULSE_DUR = COMP_SYNC_H_LEN_525i;
 			}
 			//DBG_3_OFF;
 		}
@@ -265,18 +236,18 @@ ISR(VTIM_INT)
 			if(sync_step_cnt==ST_COMP525_F2_EQ_START)
 			{
 				// Pre-equalizing pulses.
-				VTIM_STEP_DUR = COMP_HALF_LEN_525i;
-				VTIM_PULSE_DUR = COMP_EQ_PULSE_LEN_525i;
+				SYNC_STEP_DUR = COMP_HALF_LEN_525i;
+				SYNC_PULSE_DUR = COMP_EQ_PULSE_LEN_525i;
 			}
 			else if(sync_step_cnt==ST_COMP525_F2_VS_START)
 			{
 				// Frame (vertical) sync.
-				VTIM_PULSE_DUR = COMP_SYNC_V_LEN_525i;
+				SYNC_PULSE_DUR = COMP_SYNC_V_LEN_525i;
 			}
 			else if(sync_step_cnt==ST_COMP525_F2_VS_STOP)
 			{
 				// Post-equalizing pulses.
-				VTIM_PULSE_DUR = COMP_EQ_PULSE_LEN_525i;
+				SYNC_PULSE_DUR = COMP_EQ_PULSE_LEN_525i;
 			}
 			//DBG_3_OFF;
 		}
@@ -285,19 +256,20 @@ ISR(VTIM_INT)
 			// Normal line period.
 			if(sync_step_cnt==(ST_COMP525_F1_EQ_STOP+1))
 			{
-				VTIM_STEP_DUR = COMP_LINE_LEN_525i;
+				// Normal line (horizontal) sync pulse period.
+				SYNC_STEP_DUR = COMP_LINE_LEN_525i;
 			}
 			else if(sync_step_cnt==ST_COMP525_F2_EQ_STOP)
 			{
 				// Normal line (horizontal) sync pulse period.
-				VTIM_STEP_DUR = COMP_LINE_LEN_525i;
+				SYNC_STEP_DUR = COMP_LINE_LEN_525i;
 				// Delay normal width sync pulse one line.
-				VTIM_PULSE_DUR = COMP_SYNC_H_LEN_525i;
+				SYNC_PULSE_DUR = COMP_SYNC_H_LEN_525i;
 			}
 			else if(sync_step_cnt==ST_COMP525_LOOP)
 			{
 				// Pre-load equalizing pulse configuration one line before.
-				VTIM_PULSE_DUR = COMP_EQ_PULSE_LEN_525i;
+				SYNC_PULSE_DUR = COMP_EQ_PULSE_LEN_525i;
 			}
 			// When not on frame sync, count step as line.
 			frame_line_cnt++;
@@ -305,72 +277,78 @@ ISR(VTIM_INT)
 		if((frame_line_cnt==ST_COMP525_F1_ACT_START)||(frame_line_cnt==ST_COMP525_F2_ACT_START))
 		{
 			// Enable drawing in active region.
-			active_region = 1;
+			active_region |= (ACT_RUN|ACT_MN_LINES);
 		}
 		else if((frame_line_cnt==ST_COMP525_F1_ACT_STOP)||(frame_line_cnt==ST_COMP525_F2_ACT_STOP))
 		{
 			// Disable drawing in inactive region.
 			active_region = 0;
 		}
-		// Go through steps.
-		sync_step_cnt++;
-		if(sync_step_cnt>ST_COMP525_LOOP)
-		{
-			// Loop line counter within one frame.
-			frame_line_cnt = 0;
-			sync_step_cnt = 0;
-		}
+		// Set maximum step count.
+		sync_step_limit = ST_COMP525_LOOP;
 	}
-	else if(video_sys==VGA_60Hz)
+	else if(video_sys==MODE_VGA_60Hz)
 	{
 		// VGA 640x480
-		if(sync_step_cnt==0)
-		{
-			VTIM_PULSE_DUR = VGA_LINE_LEN;
-			VTIM_PULSE_DUR = VGA_SYNC_H_LEN;
-		}
-		if(frame_line_cnt==2)
+		if(sync_step_cnt==VGA_HS_START)
 		{
 			// Start vertical sync pulse.
 			VSYNC_PULL_DOWN;
+			// Horizontal sync pulse period/length.
+			SYNC_STEP_DUR = VGA_LINE_LEN;
+			SYNC_PULSE_DUR = VGA_SYNC_H_LEN;
 		}
-		else if(frame_line_cnt==4)
+		if(sync_step_cnt==VGA_VS_STOP)
 		{
 			// End vertical sync pulse.
 			VSYNC_PULL_UP;
 		}
-		else if(frame_line_cnt==37)
+		else if(sync_step_cnt==VGA_BP_STOP)
 		{
 			// Enable drawing in active region.
-			active_region = 1;
+			active_region |= (ACT_RUN|ACT_RGB_LINES);
 		}
-		else if(frame_line_cnt==517)
+		else if(sync_step_cnt==VGA_FP_START)
 		{
 			// Disable drawing in inactive region.
 			active_region = 0;
 		}
-		// Go through steps.
-		sync_step_cnt++;
-		if(sync_step_cnt>LINES_VGA)
-		{
-			frame_line_cnt = 0;
-			sync_step_cnt = 0;
-		}
+		// Set maximum step count.
+		sync_step_limit = LINES_VGA;
 	}
-	// Disable this interrupt to allow INT0 to activate first on the next pulse.
-	VTIM_DIS_INTR;
-	DBG_2_OFF;
+	// Go through steps.
+	sync_step_cnt++;
+	if(sync_step_cnt>sync_step_limit)
+	{
+		DBG_1_ON;
+		// Loop line counter within one frame.
+		frame_line_cnt = 0;
+		sync_step_cnt = 0;
+		tasks |= TASK_UPDATE_ASYNC;
+		// Update video system to user's choice.
+		video_sys = usr_video;
+#ifdef FGR_DRV_IO_T0OC_HW_FOUND
+		// Apply delay for the active part for the H-sync.
+		act_delay = usr_act_delay;
+		// Apply length of the active part of the line.
+		LACT_PULSE_DUR = usr_act_time;
+#endif
+		DBG_1_OFF;
+	}
+	// Mask this interrupt to allow INT0 to activate first on the next pulse (on timer overflow).
+	SYNC_DIS_INTR;
+	DBG_3_OFF;
 }
 
 #ifdef FGR_DRV_IO_T0OC_HW_FOUND
-//-------------------------------------- Active line timing.
+//-------------------------------------- Horizontal line active part timing.
 ISR(LACT_INT)
 {
-	DBG_3_ON;
-	// Stop and reset this timer, wait for another start.
+	DBG_4_ON;
+	// Stop and reset this timer, wait for another start from INT0.
 	LACT_STOP;
 	LACT_DATA = 0;
-	DBG_3_OFF;
+	DBG_4_OFF;
 }
 #endif
 
@@ -378,33 +356,53 @@ ISR(LACT_INT)
 //-------------------------------------- Vertical bars batch.
 ISR(SPI_INT)
 {
-	if(comp_data_idx<4)
+	// Step through series of vertical bars.
+	comp_data_idx++;
+	if((active_region&ACT_MN_LINES)!=0)
 	{
-		// Step through series of vertical bars.
-		comp_data_idx++;
 		if(comp_data_idx==1)
 		{
 			// 1 MHz.
-			SPI_set_target_clock(BAR_FREQ_1MHz);
+			//SPI_set_target_clock(BAR_FREQ_1MHz);
+			SPI_CONTROL |= (1<<SPR0);
+			SPI_CONTROL &= ~(1<<SPR1);
+			SPI_STATUS &= ~(1<<SPI2X);
+			// Send a byte to generate clock for bars.
+			SPI_DATA = SPI_DUMMY_SEND;
 		}
 		else if(comp_data_idx==2)
 		{
 			// 2 MHz.
-			SPI_set_target_clock(BAR_FREQ_2MHz);
+			//SPI_set_target_clock(BAR_FREQ_2MHz);
+			SPI_CONTROL |= (1<<SPR0);
+			SPI_CONTROL &= ~(1<<SPR1);
+			SPI_STATUS |= (1<<SPI2X);
+			// Send a byte to generate clock for bars.
+			SPI_DATA = SPI_DUMMY_SEND;
 		}
 		else if(comp_data_idx==3)
 		{
 			// 4 MHz.
-			SPI_set_target_clock(BAR_FREQ_4MHz);
+			//SPI_set_target_clock(BAR_FREQ_4MHz);
+			SPI_CONTROL &= ~((1<<SPR1)|(1<<SPR0));
+			SPI_STATUS &= ~(1<<SPI2X);
+			// Send a byte to generate clock for bars.
+			SPI_DATA = SPI_DUMMY_SEND;
 		}
-		else if(comp_data_idx==4)
+		/*else if(comp_data_idx==4)
 		{
 			// 8 MHz.
-			SPI_set_target_clock(BAR_FREQ_8MHz);
-		}
-		// Send a byte to generate clock for bars.
-		SPI_DATA = SPI_DUMMY_SEND;
+			//SPI_set_target_clock(BAR_FREQ_8MHz);
+			SPI_CONTROL = (1<<MSTR);
+			SPI_STATUS = (1<<SPI2X);
+			// Send a byte to generate clock for bars.
+			SPI_DATA = SPI_DUMMY_SEND;
+		}*/
 	}
+	/*else if((active_region&ACT_RGB_LINES)!=0)
+	{
+		
+	}*/
 }
 #endif /* FGR_DRV_SPI_HW_FOUND */
 
@@ -432,566 +430,21 @@ inline void system_startup(void)
 //-------------------------------------- Restart composite sync generation.
 void restart_composite(void)
 {
-	if(usr_video==COMP_625i)
+	if(usr_video==MODE_COMP_625i)
 	{
 		// 625i
-		VTIM_STEP_DUR = COMP_HALF_LEN_625i;			// Load duration of the cycle.
-		VTIM_PULSE_DUR = COMP_SYNC_V_LEN_525i;		// Load duration of the pulse.
+		SYNC_STEP_DUR = COMP_HALF_LEN_625i;			// Load duration of the cycle.
+		SYNC_PULSE_DUR = COMP_SYNC_V_LEN_625i;		// Load duration of the pulse.
+		usr_act_time = COMP_ACT_LEN_625i;
 	}
 	else
 	{
 		// 525i
-		VTIM_STEP_DUR = COMP_HALF_LEN_525i;			// Load duration of the cycle.
-		VTIM_PULSE_DUR = COMP_EQ_PULSE_LEN_525i;	// Load duration of the pulse.
+		SYNC_STEP_DUR = COMP_HALF_LEN_525i;			// Load duration of the cycle.
+		SYNC_PULSE_DUR = COMP_EQ_PULSE_LEN_525i;	// Load duration of the pulse.
+		usr_act_time = COMP_ACT_LEN_525i;
 	}
-	VTIM_DATA = 0;		// Reset counter.
-}
-
-//-------------------------------------- Restart HD44780 communication.
-void restart_hd44780(void)
-{
-	HD44780_setup(HD44780_RES_16X2, HD44780_CYR_CONVERT);
-	if(HD44780_init()==HD44780_OK)
-	{
-		disp_presence |= HW_DISP_44780;
-	}
-	else
-	{
-		disp_presence &= ~HW_DISP_44780;
-	}
-}
-
-//-------------------------------------- 
-uint8_t step_hd44780_ani_rotate(void)
-{
-	uint8_t err_collector = 0;
-	if(hd44780_ani_step==0)
-	{
-		// Load custom font.
-		err_collector += HD44780_upload_symbol_flash(C_CHAR_4, usr_char_rot1);
-		err_collector += HD44780_upload_symbol_flash(C_CHAR_5, usr_char_rot2);
-		err_collector += HD44780_upload_symbol_flash(C_CHAR_6, usr_char_rot3);
-		err_collector += HD44780_upload_symbol_flash(C_CHAR_7, usr_char_rot4);
-	}
-	else if((hd44780_ani_step==1)||(hd44780_ani_step==17)||(hd44780_ani_step==33))
-	{
-		// Rotate 0/90 phase, step 1.
-		err_collector += HD44780_set_xy_position(0, 0);
-		err_collector += HD44780_write_byte(C_CHAR_4, HD44780_DATA);
-		err_collector += HD44780_set_xy_position(7, 0);
-		err_collector += HD44780_write_byte(C_CHAR_6, HD44780_DATA);
-	}
-	else if((hd44780_ani_step==5)||(hd44780_ani_step==21)||(hd44780_ani_step==37))
-	{
-		// Rotate 45/135 phase, step 2.
-		err_collector += HD44780_set_xy_position(0, 0);
-		err_collector += HD44780_write_byte(C_CHAR_5, HD44780_DATA);
-		err_collector += HD44780_set_xy_position(7, 0);
-		err_collector += HD44780_write_byte(C_CHAR_7, HD44780_DATA);
-	}
-	else if((hd44780_ani_step==9)||(hd44780_ani_step==25)||(hd44780_ani_step==41))
-	{
-		// Rotate 90/180 phase, step 3.
-		err_collector += HD44780_set_xy_position(0, 0);
-		err_collector += HD44780_write_byte(C_CHAR_6, HD44780_DATA);
-		err_collector += HD44780_set_xy_position(7, 0);
-		err_collector += HD44780_write_byte(C_CHAR_4, HD44780_DATA);
-	}
-	else if((hd44780_ani_step==13)||(hd44780_ani_step==29)||(hd44780_ani_step==45))
-	{
-		// Rotate 135/225 phase, step 4.
-		err_collector += HD44780_set_xy_position(0, 0);
-		err_collector += HD44780_write_byte(C_CHAR_7, HD44780_DATA);
-		err_collector += HD44780_set_xy_position(7, 0);
-		err_collector += HD44780_write_byte(C_CHAR_5, HD44780_DATA);
-	}
-	// Check if display was lost.
-	if(err_collector!=0)
-	{
-		// Set flag for no display.
-		disp_presence &= ~HW_DISP_44780;
-	}
-	
-	hd44780_ani_step++;
-	if(hd44780_ani_step>49)
-	{
-		hd44780_ani_step = 0;
-		if(HD44780_shorttest()!=HD44780_OK)
-		{
-			// Set flag for no display.
-			disp_presence &= ~HW_DISP_44780;
-		}
-		return HD44780_OK;
-	}
-	else
-	{
-		return HD44780_ERR_BUSY;
-	}
-}
-
-//-------------------------------------- 
-uint8_t step_hd44780_ani_levels(void)
-{
-	uint8_t err_collector = 0;
-	uint8_t idx, xcoord;
-	if(hd44780_ani_step==0)
-	{
-		// Load custom font.
-		err_collector += HD44780_upload_symbol_flash(C_CHAR_0, usr_char_lvl1);	// Horizontal "no level"
-		err_collector += HD44780_upload_symbol_flash(C_CHAR_1, usr_char_lvl2);	// Horizontal "low level"
-		err_collector += HD44780_upload_symbol_flash(C_CHAR_2, usr_char_lvl3);	// Horizontal "mid level"
-		err_collector += HD44780_upload_symbol_flash(C_CHAR_3, usr_char_lvl4);	// Horizontal "high level"
-	}
-	else if((hd44780_ani_step>0)&&(hd44780_ani_step<=40))
-	{
-		// Fill next column with "no level" char.
-		//for(idx=0;idx<4;idx++)
-		for(idx=0;idx<2;idx++)
-		{
-			err_collector += HD44780_set_xy_position((hd44780_ani_step-1), idx);
-			err_collector += HD44780_write_byte(C_CHAR_0, HD44780_DATA);
-		}
-	}
-	else if(hd44780_ani_step==41)
-	{
-		// Load more of the font.
-		err_collector += HD44780_upload_symbol_flash(C_CHAR_4, usr_char_lvl33);	// Vertical "low level" for even rows
-		err_collector += HD44780_upload_symbol_flash(C_CHAR_5, usr_char_lvl32);	// Vertical "mid level" for even rows
-		err_collector += HD44780_upload_symbol_flash(C_CHAR_6, usr_char_lvl31);	// Vertical "high level" for even rows
-		err_collector += HD44780_upload_symbol_flash(C_CHAR_7, usr_char_lvl8);	// Full fill for even rows.
-	}
-	else if((hd44780_ani_step>=42)&&(hd44780_ani_step<=161))
-	{
-		idx = (hd44780_ani_step-42)%3;
-		xcoord = (hd44780_ani_step-42)/3;
-		if(idx==0)
-		{
-			// Replace chars in the current column with horizontal "low level".
-			for(idx=0;idx<2;idx++)
-			{
-				err_collector += HD44780_set_xy_position(xcoord, idx);
-				err_collector += HD44780_write_byte(C_CHAR_1, HD44780_DATA);
-			}
-		}
-		else if(idx==1)
-		{
-			// Replace chars in the current column with horizontal "mid level".
-			for(idx=0;idx<2;idx++)
-			{
-				err_collector += HD44780_set_xy_position(xcoord, idx);
-				err_collector += HD44780_write_byte(C_CHAR_2, HD44780_DATA);
-			}
-		}
-		else if(idx==2)
-		{
-			// Replace chars in the current column with horizontal "high level".
-			for(idx=0;idx<2;idx++)
-			{
-				err_collector += HD44780_set_xy_position(xcoord, idx);
-				err_collector += HD44780_write_byte(C_CHAR_3, HD44780_DATA);
-			}
-		}
-	}
-	else if(hd44780_ani_step==162)
-	{
-		// Transition from horizontal "high level" to "full fill" on the whole display, step 1.
-		err_collector += HD44780_upload_symbol_flash(C_CHAR_3, usr_char_lvl5);
-	}
-	else if(hd44780_ani_step==164)
-	{
-		// Transition from horizontal "high level" to "full fill" on the whole display, step 2.
-		err_collector += HD44780_upload_symbol_flash(C_CHAR_3, usr_char_lvl6);
-	}
-	else if(hd44780_ani_step==166)
-	{
-		// Transition from horizontal "high level" to "full fill" on the whole display, step 3.
-		err_collector += HD44780_upload_symbol_flash(C_CHAR_3, usr_char_lvl7);
-	}
-	else if(hd44780_ani_step==168)
-	{
-		// Transition from horizontal "high level" to "full fill" on the whole display, step 4.
-		err_collector += HD44780_upload_symbol_flash(C_CHAR_3, usr_char_lvl8);
-	}
-	else if(hd44780_ani_step==170)
-	{
-		// Load more of the font.
-		err_collector += HD44780_upload_symbol_flash(C_CHAR_0, usr_char_lvl23);	// Vertical "low level" for odd rows
-		err_collector += HD44780_upload_symbol_flash(C_CHAR_1, usr_char_lvl22);	// Vertical "mid level" for odd rows
-		err_collector += HD44780_upload_symbol_flash(C_CHAR_2, usr_char_lvl21);	// Vertical "high level" for odd rows
-		// Replace even rows with another char that looks the same.
-		for(idx=1;idx<2;idx+=2)
-		{
-			for(xcoord=0;xcoord<40;xcoord++)
-			{
-				err_collector += HD44780_set_xy_position(xcoord, idx);
-				err_collector += HD44780_write_byte(C_CHAR_7, HD44780_DATA);
-			}
-		}
-	}
-	else if(hd44780_ani_step==171)
-	{
-		// Transition from "full fill" to horizontal "max level" on the whole display, step 1.
-		err_collector += HD44780_upload_symbol_flash(C_CHAR_3, usr_char_lvl18);
-		err_collector += HD44780_upload_symbol_flash(C_CHAR_7, usr_char_lvl28);
-	}
-	else if(hd44780_ani_step==173)
-	{
-		// Transition from "full fill" to horizontal "max level" on the whole display, step 2.
-		err_collector += HD44780_upload_symbol_flash(C_CHAR_3, usr_char_lvl19);
-		err_collector += HD44780_upload_symbol_flash(C_CHAR_7, usr_char_lvl29);
-	}
-	else if(hd44780_ani_step==175)
-	{
-		// Transition from "full fill" to horizontal "max level" on the whole display, step 3.
-		err_collector += HD44780_upload_symbol_flash(C_CHAR_3, usr_char_lvl20);
-		err_collector += HD44780_upload_symbol_flash(C_CHAR_7, usr_char_lvl30);
-	}
-	else if(hd44780_ani_step==177)
-	{
-		// Replace first row with horizontal "high level".
-		for(xcoord=0;xcoord<40;xcoord++)
-		{
-			err_collector += HD44780_set_xy_position(xcoord, 0);
-			err_collector += HD44780_write_byte(C_CHAR_2, HD44780_DATA);
-		}
-	}
-	else if(hd44780_ani_step==179)
-	{
-		// Replace first row with horizontal "mid level".
-		for(xcoord=0;xcoord<40;xcoord++)
-		{
-			err_collector += HD44780_set_xy_position(xcoord, 0);
-			err_collector += HD44780_write_byte(C_CHAR_1, HD44780_DATA);
-		}
-	}
-	else if(hd44780_ani_step==181)
-	{
-		// Replace first row with horizontal "low level".
-		for(xcoord=0;xcoord<40;xcoord++)
-		{
-			err_collector += HD44780_set_xy_position(xcoord, 0);
-			err_collector += HD44780_write_byte(C_CHAR_0, HD44780_DATA);
-		}
-	}
-	else if(hd44780_ani_step==183)
-	{
-		// Replace first row with "no level".
-		for(xcoord=0;xcoord<40;xcoord++)
-		{
-			err_collector += HD44780_set_xy_position(xcoord, 0);
-			err_collector += HD44780_write_byte(ASCII_SPACE, HD44780_DATA);
-		}
-	}
-	else if(hd44780_ani_step==185)
-	{
-		// Replace second row with horizontal "high level".
-		for(xcoord=0;xcoord<40;xcoord++)
-		{
-			err_collector += HD44780_set_xy_position(xcoord, 1);
-			err_collector += HD44780_write_byte(C_CHAR_6, HD44780_DATA);
-		}
-	}
-	else if(hd44780_ani_step==187)
-	{
-		// Replace second row with horizontal "mid level".
-		for(xcoord=0;xcoord<40;xcoord++)
-		{
-			err_collector += HD44780_set_xy_position(xcoord, 1);
-			err_collector += HD44780_write_byte(C_CHAR_5, HD44780_DATA);
-		}
-	}
-	else if(hd44780_ani_step==189)
-	{
-		// Replace second row with horizontal "low level".
-		for(xcoord=0;xcoord<40;xcoord++)
-		{
-			err_collector += HD44780_set_xy_position(xcoord, 1);
-			err_collector += HD44780_write_byte(C_CHAR_4, HD44780_DATA);
-		}
-	}
-	else if(hd44780_ani_step==191)
-	{
-		// Replace second row with "no level".
-		for(xcoord=0;xcoord<40;xcoord++)
-		{
-			err_collector += HD44780_set_xy_position(xcoord, 1);
-			err_collector += HD44780_write_byte(ASCII_SPACE, HD44780_DATA);
-		}
-	}
-	/*else if(hd44780_ani_step==193)
-	{
-		// Replace third row with horizontal "high level".
-		for(xcoord=0;xcoord<40;xcoord++)
-		{
-			err_collector += HD44780_set_xy_position(xcoord, 2);
-			err_collector += HD44780_write_byte(C_CHAR_2, HD44780_DATA);
-		}
-	}
-	else if(hd44780_ani_step==195)
-	{
-		// Replace third row with horizontal "mid level".
-		for(xcoord=0;xcoord<40;xcoord++)
-		{
-			err_collector += HD44780_set_xy_position(xcoord, 2);
-			err_collector += HD44780_write_byte(C_CHAR_1, HD44780_DATA);
-		}
-	}
-	else if(hd44780_ani_step==197)
-	{
-		// Replace third row with horizontal "low level".
-		for(xcoord=0;xcoord<40;xcoord++)
-		{
-			err_collector += HD44780_set_xy_position(xcoord, 2);
-			err_collector += HD44780_write_byte(C_CHAR_0, HD44780_DATA);
-		}
-	}
-	else if(hd44780_ani_step==199)
-	{
-		// Replace third row with "no level".
-		for(xcoord=0;xcoord<40;xcoord++)
-		{
-			err_collector += HD44780_set_xy_position(xcoord, 2);
-			err_collector += HD44780_write_byte(ASCII_SPACE, HD44780_DATA);
-		}
-	}
-	else if(hd44780_ani_step==201)
-	{
-		// Replace forth row with horizontal "high level".
-		for(xcoord=0;xcoord<40;xcoord++)
-		{
-			err_collector += HD44780_set_xy_position(xcoord, 3);
-			err_collector += HD44780_write_byte(C_CHAR_6, HD44780_DATA);
-		}
-	}
-	else if(hd44780_ani_step==203)
-	{
-		// Replace forth row with horizontal "mid level".
-		for(xcoord=0;xcoord<40;xcoord++)
-		{
-			err_collector += HD44780_set_xy_position(xcoord, 3);
-			err_collector += HD44780_write_byte(C_CHAR_5, HD44780_DATA);
-		}
-	}
-	else if(hd44780_ani_step==205)
-	{
-		// Replace forth row with horizontal "low level".
-		for(xcoord=0;xcoord<40;xcoord++)
-		{
-			err_collector += HD44780_set_xy_position(xcoord, 3);
-			err_collector += HD44780_write_byte(C_CHAR_4, HD44780_DATA);
-		}
-	}
-	else if(hd44780_ani_step==207)
-	{
-		// Replace forth row with "no level".
-		for(xcoord=0;xcoord<40;xcoord++)
-		{
-			err_collector += HD44780_set_xy_position(xcoord, 3);
-			err_collector += HD44780_write_byte(ASCII_SPACE, HD44780_DATA);
-		}
-	}*/
-	// Check if display was lost.
-	if(err_collector!=0)
-	{
-		// Set flag for no display.
-		disp_presence &= ~HW_DISP_44780;
-	}
-	
-	hd44780_ani_step++;
-	if(hd44780_ani_step>210)
-	{
-		hd44780_ani_step = 0;
-		if(HD44780_shorttest()!=HD44780_OK)
-		{
-			// Set flag for no display.
-			disp_presence &= ~HW_DISP_44780;
-		}
-		return HD44780_OK;
-	}
-	else
-	{
-		return HD44780_ERR_BUSY;
-	}
-}
-
-//-------------------------------------- Draw next frame of animation on HD44780-compatible display.
-void step_hd44780_animation(void)
-{
-	uint8_t err_collector = 0;
-	if(hd44780_page_step==ST_TEXT_0)
-	{
-		// Check if page was drawn.
-		if(hd44780_ani_step==0)
-		{
-			// Not yet.
-			hd44780_ani_step++;
-			// Draw the page.
-			err_collector += HD44780_set_xy_position(0, 0);
-			err_collector += HD44780_write_flash_string(hd44780_det);
-			tasks &= ~TASK_SEC_TICK;
-		}
-		else if((tasks&TASK_SEC_TICK)!=0)
-		{
-			// Page already drawn and got one second tick.
-			tasks &= ~TASK_SEC_TICK;
-			// Go to the next page.
-			hd44780_page_step++;
-			hd44780_ani_step = 0;
-		}
-	}
-	else if(hd44780_page_step==ST_TEXT_1)
-	{
-		// Check if page was drawn.
-		if(hd44780_ani_step==0)
-		{
-			// Not yet.
-			hd44780_ani_step++;
-			// Draw the page.
-			err_collector += HD44780_set_xy_position(0, 0);
-			err_collector += HD44780_write_flash_string(hd44780_dsp_1x8);
-			tasks &= ~TASK_SEC_TICK;
-		}
-		else if((tasks&TASK_SEC_TICK)!=0)
-		{
-			// Page already drawn and got one second tick.
-			tasks &= ~TASK_SEC_TICK;
-			// Go to the next page.
-			hd44780_page_step++;
-			hd44780_ani_step = 0;
-		}
-	}
-	else if(hd44780_page_step==ST_TEXT_2)
-	{
-		// Check if page was drawn.
-		if(hd44780_ani_step==0)
-		{
-			// Not yet.
-			hd44780_ani_step++;
-			// Draw the page.
-			err_collector += HD44780_set_xy_position(10, 0);
-			err_collector += HD44780_write_flash_string(hd44780_dsp_x16);
-			err_collector += HD44780_set_xy_position(0, 1);
-			err_collector += HD44780_write_flash_string(hd44780_dsp_row2);
-			tasks &= ~TASK_SEC_TICK;
-		}
-		else if((tasks&TASK_SEC_TICK)!=0)
-		{
-			// Page already drawn and got one second tick.
-			tasks &= ~TASK_SEC_TICK;
-			// Go to the next page.
-			hd44780_page_step++;
-			hd44780_ani_step = 0;
-		}
-	}
-	else if(hd44780_page_step==ST_TEXT_3)
-	{
-		// Check if page was drawn.
-		if(hd44780_ani_step==0)
-		{
-			// Not yet.
-			hd44780_ani_step++;
-			// Draw the page.
-			err_collector += HD44780_set_xy_position(16, 0);
-			err_collector += HD44780_write_flash_string(hd44780_dsp_x20);
-			//err_collector += HD44780_set_xy_position(0, 2);
-			//err_collector += HD44780_write_flash_string(hd44780_dsp_row3);
-			tasks &= ~TASK_SEC_TICK;
-		}
-		else if((tasks&TASK_SEC_TICK)!=0)
-		{
-			// Page already drawn and got one second tick.
-			tasks &= ~TASK_SEC_TICK;
-			// Go to the next page.
-			hd44780_page_step++;
-			hd44780_ani_step = 0;
-		}
-	}
-	else if(hd44780_page_step==ST_TEXT_4)
-	{
-		// Check if page was drawn.
-		if(hd44780_ani_step==0)
-		{
-			// Not yet.
-			hd44780_ani_step++;
-			// Draw the page.
-			err_collector += HD44780_set_xy_position(20, 0);
-			err_collector += HD44780_write_flash_string(hd44780_dsp_x24);
-			//err_collector += HD44780_set_xy_position(0, 3);
-			//err_collector += HD44780_write_flash_string(hd44780_dsp_row4);
-			tasks &= ~TASK_SEC_TICK;
-		}
-		else if((tasks&TASK_SEC_TICK)!=0)
-		{
-			// Page already drawn and got one second tick.
-			tasks &= ~TASK_SEC_TICK;
-			// Go to the next page.
-			hd44780_page_step++;
-			hd44780_ani_step = 0;
-		}
-	}
-	else if(hd44780_page_step==ST_TEXT_5)
-	{
-		// Check if page was drawn.
-		if(hd44780_ani_step==0)
-		{
-			// Not yet.
-			hd44780_ani_step++;
-			// Draw the page.
-			err_collector += HD44780_set_xy_position(36, 0);
-			err_collector += HD44780_write_flash_string(hd44780_dsp_x40);
-			tasks &= ~TASK_SEC_TICK;
-		}
-		else if((tasks&TASK_SEC_TICK)!=0)
-		{
-			// Page already drawn and got one second tick.
-			tasks &= ~TASK_SEC_TICK;
-			// Go to the next page.
-			hd44780_page_step++;
-			hd44780_ani_step = 0;
-		}
-	}
-	else if(hd44780_page_step==ST_TEXT_6)
-	{
-		if(step_hd44780_ani_rotate()==HD44780_OK)
-		{
-			hd44780_page_step++;
-		}
-	}
-	else if(hd44780_page_step==ST_TEXT_7)
-	{
-		if(step_hd44780_ani_levels()==HD44780_OK)
-		{
-			hd44780_page_step++;
-		}
-	}
-	else if(hd44780_page_step==ST_TEXT_8)
-	{
-		// Re-test connections.
-		if(HD44780_selftest()!=HD44780_OK)
-		{
-			// Set flag for no display.
-			disp_presence &= ~HW_DISP_44780;
-		}
-		hd44780_page_step++;
-	}
-	else
-	{
-		hd44780_page_step = ST_TEXT_1;
-		hd44780_ani_step = 0;
-	}
-	// Check if display was lost.
-	if(err_collector!=0)
-	{
-		// Set flag for no display.
-		disp_presence &= ~HW_DISP_44780;
-	}
-	// Check if there is no display anymore.
-	if((disp_presence&HW_DISP_44780)==0)
-	{
-		// Cancel animations.
-		hd44780_page_step = 0;
-		hd44780_ani_step = 0;
-	}
+	SYNC_DATA = 0;		// Reset counter.
 }
 
 //-------------------------------------- Keyboard scan routine.
@@ -1046,20 +499,20 @@ void keys_simple_scan(void)
 
 int main()
 {
-	uint8_t div_sec = 0;
-	uint8_t sec_top;
-	
 	// Start-up initialization.
 	system_startup();
+
+	uint8_t div_sec = 0;
+	uint8_t seconds_top = FPS_COMP625;
 	
-	sync_step_cnt = 0;
-	frame_line_cnt = 0;
 	//dbg_index = 1;
 	//dbg_index = 305;
 	//dbg_index = 315;
 	dbg_index = 620;
 	
-	restart_hd44780();
+#ifdef CONF_EN_HD44780
+	uint8_t err_mask = 0;
+	HD44780_setup(HD44780_RES_16X2, HD44780_CYR_NOCONV);
 // 	if(HD44780_init()==HD44780_OK)
 // 	{
 // 		HD44780_set_xy_position(0, 0);
@@ -1067,6 +520,7 @@ int main()
 // 		HD44780_set_xy_position(0, 1);
 // 		HD44780_write_number(123, HD44780_NUMBER);
 // 	}
+#endif /* CONF_EN_HD44780 */
 	restart_composite();
 	
 #ifdef FGR_DRV_UARTSPI_HW_FOUND
@@ -1076,9 +530,14 @@ int main()
 #endif /* FGR_DRV_UARTSPI_HW_FOUND */
 #ifdef FGR_DRV_SPI_HW_FOUND
 	SPI_CONFIG_MSTR_M0;
-	SPI_set_target_clock(BAR_FREQ_500Hz);
+	//SPI_set_target_clock(BAR_FREQ_500Hz);
+	SPI_CONTROL &= ~(1<<SPR0);
+	SPI_CONTROL |= (1<<SPR1);
+	SPI_STATUS = (1<<SPI2X);
 	SPI_START; SPI_INT_EN;
 #endif /* FGR_DRV_SPI_HW_FOUND */
+	// Enable interrupt from syncgen.      
+	SYNC_EN_INTR;
 	
 	// Enable interrupts globally.
 	sei();
@@ -1089,53 +548,77 @@ int main()
 		{
 			tasks &= ~TASK_UPDATE_ASYNC;
 			keys_simple_scan();
-			// Determine how many updates there is per second.
-			if(usr_video==COMP_525i)
-			{
-				sec_top = 25;
-			}
-			else
-			{
-				sec_top = 30;
-			}
 			// One second tick.
 			div_sec++;
-			if(div_sec>=sec_top)
+			if(div_sec>=seconds_top)
 			{
 				div_sec = 0;
 				// Reset watchdog.
 				wdt_reset();
 				// Second tick.
 				tasks |= TASK_SEC_TICK;
+#ifdef CONF_EN_HD44780
 				// Check if HD44780-compatible display is detected.
 				if((disp_presence&HW_DISP_44780)==0)
 				{
 					// No display found, try to re-init it.
-					restart_hd44780();
+					HD44780_setup(HD44780_RES_16X2, HD44780_CYR_CONVERT);
+					if(HD44780_init()==HD44780_OK)
+					{
+						disp_presence |= HW_DISP_44780;
+					}
+					else
+					{
+						disp_presence &= ~HW_DISP_44780;
+					}
 				}
+#endif /* CONF_EN_HD44780 */
 			}
+#ifdef CONF_EN_HD44780
 			// Check if HD44780-compatible display is detected.
 			if((disp_presence&HW_DISP_44780)!=0)
 			{
+				// Setup character display test module.
+				chardisp_set_device(HD44780_upload_symbol_flash,
+									HD44780_set_xy_position,
+									HD44780_write_byte,
+									HD44780_write_flash_string);
 				// HD44780-compatible display is connected.
-				step_hd44780_animation();
+				err_mask = chardisp_step_animation(tasks&TASK_SEC_TICK);
+				if(err_mask!=HD44780_OK)
+				{
+					// Seems like display fell of the bus.
+					disp_presence &= ~HW_DISP_44780;
+				}
 			}
+#endif /* CONF_EN_HD44780 */
+			// Clear processed tasks.
+			tasks &= ~TASK_SEC_TICK;
 		}
 		// Video mode selector.
-		if((kbd_state&SW_VID_SYS1)!=0)
+		if((kbd_state&SW_VID_SYS0)!=0)
 		{
-			if((kbd_state&SW_VID_SYS0)!=0)
+			if((kbd_state&SW_VID_SYS1)!=0)
 			{
-				usr_video = COMP_525i;
+				usr_video = MODE_COMP_525i;
+				usr_act_delay = COMP_ACT_DELAY_525i;
+				usr_act_time = COMP_ACT_LEN_525i;
+				seconds_top = FPS_COMP525;
 			}
 			else
 			{
-				usr_video = COMP_625i;
+				usr_video = MODE_COMP_625i;
+				usr_act_delay = COMP_ACT_DELAY_625i;
+				usr_act_time = COMP_ACT_LEN_625i;
+				seconds_top = FPS_COMP625;
 			}
 		}
 		else
 		{
-			usr_video = VGA_60Hz;
+			usr_video = MODE_VGA_60Hz;
+			usr_act_delay = VGA_ACT_DELAY;
+			usr_act_time = VGA_ACT_LEN;
+			seconds_top = FPS_VGA;
 		}
 	}
 

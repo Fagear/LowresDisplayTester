@@ -8,6 +8,10 @@
 #ifndef FLASH_STRINGS_H_
 #define FLASH_STRINGS_H_
 
+#ifdef CONF_EN_CHARDISP
+
+#include <avr/pgmspace.h>
+
 const int8_t usr_char_rot1[8] PROGMEM =
 {
 	0b00000000,
@@ -704,14 +708,16 @@ const int8_t usr_char_fgr3[8] PROGMEM =
 	0b00000000,
 };
 
-const int8_t hd44780_det[] PROGMEM = "Detected";
-const int8_t hd44780_dsp_1x8[] PROGMEM = "[ R1x8 ]";
-const int8_t hd44780_dsp_x16[] PROGMEM = "x16  ]";
-const int8_t hd44780_dsp_x20[] PROGMEM = "x20]";
-const int8_t hd44780_dsp_x24[] PROGMEM = "x24]";
-const int8_t hd44780_dsp_x40[] PROGMEM = "x40]";
-const int8_t hd44780_dsp_row2[] PROGMEM = "[row  2]";
-const int8_t hd44780_dsp_row3[] PROGMEM = "[row  3]";
-const int8_t hd44780_dsp_row4[] PROGMEM = "[row  4]";
+const int8_t chardisp_det[] PROGMEM = "Detected";
+const int8_t chardisp_dsp_1x8[] PROGMEM = "[ R1x8 ]";
+const int8_t chardisp_dsp_x16[] PROGMEM = "x16  ]";
+const int8_t chardisp_dsp_x20[] PROGMEM = "x20]";
+const int8_t chardisp_dsp_x24[] PROGMEM = "x24]";
+const int8_t chardisp_dsp_x40[] PROGMEM = "x40]";
+const int8_t chardisp_dsp_row2[] PROGMEM = "[row  2]";
+const int8_t chardisp_dsp_row3[] PROGMEM = "[row  3]";
+const int8_t chardisp_dsp_row4[] PROGMEM = "[row  4]";
+
+#endif /* CONF_EN_CHARDISP */
 
 #endif /* FLASH_STRINGS_H_ */

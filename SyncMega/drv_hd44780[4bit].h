@@ -6,6 +6,10 @@
 #include <avr/pgmspace.h>
 #include <util/delay.h>
 
+#define HD44780_USE_DIRECT_STRINGS			// Turn on direct writing to the display
+//#define HD44780_USE_SCREEN_BUFFERS			// Turn on paged buffer
+//#define HD44780_RU_REENCODE					// Enable re-encoding Cyrillic for displays without CP1251 support
+
 // HD44780 display interface hardware.
 #define HD44780CTRL_DIR		DDRD
 #define HD44780CTRL_PORT	PORTD
@@ -26,9 +30,6 @@
 #define HD44780_MAX_ROWS	4				// Number of visible rows of the connected display
 #define HD44780_TEST_CHAR1	0xA5			// Char for display RAM testing, pattern 1
 #define HD44780_TEST_CHAR2	0x5A			// Char for display RAM testing, pattern 2
-
-#define HD44780_USE_DIRECT_STRINGS			// Turn on direct strings writing to the display
-//#define HD44780_USE_SCREEN_BUFFERS			// Turn on paged buffer
 
 // MSBs for writing a command.
 enum
@@ -102,10 +103,10 @@ enum
 // Error codes.
 enum
 {
-	HD44780_OK = 0,			// Everything went fine
-	HD44780_ERR_BUSY,		// Error while working with the display (BUSY wait fail)
-	HD44780_ERR_DATA,		// Error in input parameters of a function
-	HD44780_ERR_BUS,		// Error while testing display data bus
+	HD44780_OK = 0,				// Everything went fine
+	HD44780_ERR_BUSY = (1<<0),	// Error while working with the display (BUSY wait fail)
+	HD44780_ERR_DATA = (1<<1),	// Error in input parameters of a function
+	HD44780_ERR_BUS = (1<<2),	// Error while testing display data bus
 };
 
 // What to send to the display.
@@ -153,6 +154,7 @@ uint8_t HD44780_columns(void);
 uint8_t HD44780_rows(void);
 uint8_t HD44780_wait_ready(void);
 uint8_t HD44780_write_byte(const uint8_t send_data, const uint8_t send_mode);
+uint8_t HD44780_write_data_byte(const uint8_t send_data);
 uint8_t HD44780_read_byte(uint8_t *read_result);
 uint8_t HD44780_set_x_position(uint8_t x_pos);
 uint8_t HD44780_set_xy_position(uint8_t x_pos, uint8_t y_pos);
