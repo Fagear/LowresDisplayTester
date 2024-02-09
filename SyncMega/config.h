@@ -27,6 +27,7 @@ Pre-compile configuration file.
 
 //#define CONF_NO_DEBUG_PINS			// Disable debugging pins
 //#define CONF_EN_HD44780				// Enable support for character displays with HD44780/KS0066/สม1013ยร6/SPLC780 parallel controllers
+#define CONF_EN_I2C					// Enable support for I2C displays and expanders
 
 #ifdef CONF_EN_HD44780
 	#define CONF_EN_CHARDISP		// Enable support for character displays testing.

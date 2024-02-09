@@ -102,6 +102,12 @@ Supported MCUs:	ATmega8(-/A), ATmega16(-/A), ATmega32(-/A), ATmega48(-/A/P/AP), 
 	#define I2C_ADDRESS			TWAR		// Address register
 #endif /* FGR_DRV_I2C_Mxx8 */
 
+#ifndef CONF_EN_I2C
+	#undef FGR_DRV_I2C_HW_FOUND
+#endif /* CONF_EN_I2C */
+
+#ifdef FGR_DRV_I2C_HW_FOUND
+
 enum
 {
 	// Misc. state codes.
@@ -143,8 +149,6 @@ enum
 };
 
 #define I2C_READ_BIT			(1<<0)		// Read flag in I2C address byte.
-
-#ifdef FGR_DRV_I2C_HW_FOUND
 
 #define I2C_GET_DATA			I2C_DATA												// Data storage
 #define I2C_INIT_MASTER			I2C_CONTROL=(1<<TWEN)|(1<<TWIE)							// Initaliaze master operation

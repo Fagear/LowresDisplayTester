@@ -1,11 +1,25 @@
-/*
- * syncavr.h
- *
- * Created:			2022-05-17 15:28:20
- * Modified:		2022-05-20
- * Author:			Maksim Kryukov aka Fagear (fagear@mail.ru)
- *
- */ 
+/**************************************************************************************************************************************************************
+syncavr.h
+
+Copyright © 2024 Maksim Kryukov <fagear@mail.ru>
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+Created: 2022-05
+
+Part of the [LowresDisplayTester] project.
+
+**************************************************************************************************************************************************************/
 
 #ifndef SYNCAVR_H_
 #define SYNCAVR_H_
@@ -36,6 +50,7 @@ enum
 {
 	MODE_COMP_625i,					// Composite 625 lines @ 25Hz interlaced (PAL/SECAM)
 	MODE_COMP_525i,					// Composite 525 lines @ 30Hz interlaced (NTSC)
+	MODE_EGA,						// CGA/EGA 60Hz
 	MODE_VGA_60Hz,					// VGA 640x480 @ 60Hz progressive
 };
 
@@ -74,6 +89,7 @@ enum
 
 void system_startup(void);
 void keys_simple_scan(void);
-int main();
+uint8_t select_video_std(void);
+int main(void);
 
 #endif /* SYNCAVR_H_ */

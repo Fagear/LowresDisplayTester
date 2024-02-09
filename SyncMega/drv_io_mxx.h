@@ -64,6 +64,7 @@ Supported MCUs:	ATmega8(-/A), ATmega16(-/A), ATmega32(-/A).
 #define BTN_1_STATE			(SW1_SRC&SW_1)
 #define BTN_2_STATE			(SW2_SRC&SW_2)
 
+// Vertical sync output for VGA.
 #ifdef FGR_DRV_IO_M8
 	// ATmega8(-/A).
 	#define VSYNC_PORT			PORTB
@@ -80,6 +81,8 @@ Supported MCUs:	ATmega8(-/A), ATmega16(-/A), ATmega32(-/A).
 #define VSYNC_PULL_UP		VSYNC_PORT |= VSYNC_PIN
 #define VSYNC_PULL_DOWN		VSYNC_PORT &= ~VSYNC_PIN
 
+// Feedback trigger for sync generated with Timer 1.
+// (INT0 starts 0.5us faster than Timer's own compare interrupt)
 #define INT0_INT			INT0_vect					// External INT0 interrupt vector alias
 #define INT0_CONFIG_REG		MCUCR |= (1<<ISC01)			// Configure INT0 to trigger on falling edge
 #define INT0_EN				GICR |= (1<<INT0)			// Enable interrupt
@@ -89,19 +92,20 @@ Supported MCUs:	ATmega8(-/A), ATmega16(-/A), ATmega32(-/A).
 #define INT0_CONFIG_PIN2	PORTD |= (1<<2)				// INT0 input pin port
 
 // Video sync timing setup.
-#define SYNC_CONFIG_REG1	TCCR1A = (1<<COM1A1)|(1<<COM1A0)|(0<<COM1B1)|(0<<COM1B0)|(1<<WGM11)|(0<<WGM10)		// Enable Fast-PWM with TOP = ICR1
-#define SYNC_CONFIG_REG2	TCCR1B = (0<<ICNC1)|(0<<ICES1)|(1<<WGM13)|(1<<WGM12)|(0<<CS12)|(0<<CS11)|(1<<CS10)	// Start timer with clk/1 clock
-#define SYNC_DATA			TCNT1L						// Count register
-#define SYNC_STEP_DUR		ICR1						// TOP for counter
-#define SYNC_PULSE_DUR		OCR1A						// Duty cycle register
+#define SYNC_CONFIG_NEG		TCCR1A = (1<<COM1A1)|(1<<COM1A0)|(0<<COM1B1)|(0<<COM1B0)|(1<<WGM11)|(0<<WGM10)		// Enable Fast-PWM (negative pulse) with TOP = ICR1
+#define SYNC_CONFIG_POS		TCCR1A = (1<<COM1A1)|(0<<COM1A0)|(0<<COM1B1)|(0<<COM1B0)|(1<<WGM11)|(0<<WGM10)		// Enable Fast-PWM (positive pulse) with TOP = ICR1
+#define SYNC_CONFIG_RUN		TCCR1B = (0<<ICNC1)|(0<<ICES1)|(1<<WGM13)|(1<<WGM12)|(0<<CS12)|(0<<CS11)|(1<<CS10)	// Start timer with clk/1 clock
+#define SYNC_STEP_DUR		ICR1									// TOP for counter
+#define SYNC_DATA			TCNT1									// Count register
+#define SYNC_PULSE_DUR		OCR1A									// Duty cycle register
 #ifdef FGR_DRV_IO_M8
 	// ATmega8(-/A).
-	#define SYNC_CONFIG_PIN1	PORTB &= ~(1<<1)		// Output pin port
-	#define SYNC_CONFIG_PIN2	DDRB |= (1<<1)			// Output pin direction
+	#define SYNC_CONFIG_PIN1	PORTB &= ~(1<<1)					// Output pin port
+	#define SYNC_CONFIG_PIN2	DDRB |= (1<<1)						// Output pin direction
 #else
 	// ATmega16(-/A), ATmega32(-/A).
-	#define SYNC_CONFIG_PIN1	PORTD &= ~(1<<5)		// Output pin port
-	#define SYNC_CONFIG_PIN2	DDRD |= (1<<5)			// Output pin direction
+	#define SYNC_CONFIG_PIN1	PORTD &= ~(1<<5)					// Output pin port
+	#define SYNC_CONFIG_PIN2	DDRD |= (1<<5)						// Output pin direction
 #endif /* FGR_DRV_IO_M8 */
 
 #ifdef FGR_DRV_IO_M8
@@ -111,15 +115,15 @@ Supported MCUs:	ATmega8(-/A), ATmega16(-/A), ATmega32(-/A).
 	#define FGR_DRV_IO_T0OC_HW_FOUND
 	#define LACT_COMP_INT		TIMER0_COMP_vect					// Timer 0 Compare interrupt vector alias
 	#define LACT_EN_INTR		TIMSK |= (1<<OCIE0)|(0<<TOIE0)		// Enable interrupt
-	#define LACT_DIS_INTR		TIMSK &= ~(1<<OCIE0)|(1<<TOIE0)		// Disable interrupt
-	#define LACT_CONFIG_REG1	TCCR0 = (0<<FOC0)|(0<<WGM00)|(1<<COM01)|(0<<COM00)|(1<<WGM01)|(0<<CS02)|(0<<CS01)|(0<<CS00)
+	#define LACT_DIS_INTR		TIMSK &= ~((1<<OCIE0)|(1<<TOIE0))	// Disable interrupt
+	#define LACT_CONFIG_REG1	TCCR0 = (0<<FOC0)|(0<<WGM00)|(0<<COM01)|(0<<COM00)|(1<<WGM01)|(0<<CS02)|(0<<CS01)|(0<<CS00)
 	#define LACT_CONFIG_REG2	
 	#define LACT_START			TCCR0 |= (1<<CS01)					// Start timer with clk/8 clock
-	#define LACT_STOP			TCCR0 &= ~(1<<CS01)					// Stop timer
-	#define LACT_OC_CLEAR1		TCCR0 &= ~((1<<COM00)|(1<<COM01))	// Switch to "Clear OC pin on compare" (part 1)
-	#define LACT_OC_CLEAR2		TCCR0 |= (1<<COM01)					// Switch to "Clear OC pin on compare" (part 2)
-	#define LACT_OC_TOGGLE1		TCCR0 &= ~((1<<COM00)|(1<<COM01))	// Switch to "Toggle OC pin on compare" (part 1)
-	#define LACT_OC_TOGGLE2		TCCR0 |= (1<<COM00)					// Switch to "Toggle OC pin on compare" (part 2)
+	#define LACT_STOP			TCCR0 &= ~((1<<CS00)|(1<<CS01)|(1<<CS02))	// Stop timer
+	#define LACT_OC_DIS			TCCR0 &= ~((1<<COM00)|(1<<COM01))			// Disable OC operation
+	#define LACT_OC_CLEAR		TCCR0 |= (1<<COM01)					// Switch to "Clear OC pin on compare"
+	#define LACT_OC_SET			TCCR0 |= (1<<COM01)|(1<<COM00)		// Switch to "Set OC pin on compare"
+	#define LACT_OC_TOGGLE		TCCR0 |= (1<<COM00)					// Switch to "Toggle OC pin on compare"
 	#define LACT_OC_FORCE		TCCR0 |= (1<<FOC0)					// Force OC event
 	#define LACT_DATA			TCNT0								// Count register
 	#define LACT_PULSE_DUR		OCR0								// Compare register
@@ -127,19 +131,37 @@ Supported MCUs:	ATmega8(-/A), ATmega16(-/A), ATmega32(-/A).
 	#define LACT_CONFIG_PIN2	DDRB |= (1<<3)						// OC pin direction
 #endif /* FGR_DRV_IO_M8 */
 
+// HD44780-compatible character display.
 #ifdef CONF_EN_HD44780
-#define HD44780CTRL_DIR		DDRA
-#define HD44780CTRL_PORT	PORTA
-#define HD44780DATA_DIR		DDRC
-#define HD44780DATA_PORT	PORTC
-#define HD44780DATA_SRC		PINC
-#define HD44780_A0			(1<<5)
-#define HD44780_RW			(1<<6)
-#define HD44780_E			(1<<7)
-#define HD44780_D4			(1<<5)
-#define HD44780_D5			(1<<4)
-#define HD44780_D6			(1<<3)
-#define HD44780_D7			(1<<2)
+#ifdef FGR_DRV_IO_M8
+	// ATmega8(-/A).
+	#define HD44780CTRL_DIR		DDRD
+	#define HD44780CTRL_PORT	PORTD
+	#define HD44780DATA_DIR		DDRC
+	#define HD44780DATA_PORT	PORTC
+	#define HD44780DATA_SRC		PINC
+	#define HD44780_A0			(1<<7)
+	#define HD44780_RW			(1<<5)
+	#define HD44780_E			(1<<3)
+	#define HD44780_D4			(1<<0)
+	#define HD44780_D5			(1<<1)
+	#define HD44780_D6			(1<<2)
+	#define HD44780_D7			(1<<3)
+#else
+	// ATmega16(-/A), ATmega32(-/A).
+	#define HD44780CTRL_DIR		DDRA
+	#define HD44780CTRL_PORT	PORTA
+	#define HD44780DATA_DIR		DDRC
+	#define HD44780DATA_PORT	PORTC
+	#define HD44780DATA_SRC		PINC
+	#define HD44780_A0			(1<<5)
+	#define HD44780_RW			(1<<6)
+	#define HD44780_E			(1<<7)
+	#define HD44780_D4			(1<<5)
+	#define HD44780_D5			(1<<4)
+	#define HD44780_D6			(1<<3)
+	#define HD44780_D7			(1<<2)
+#endif /* FGR_DRV_IO_M8 */
 #endif /* CONF_EN_HD44780 */
 
 // Watchdog setup.
@@ -266,21 +288,19 @@ inline void HW_init(void)
 #endif
 	
 	// Configure output for video sync.
-	SYNC_CONFIG_REG1; SYNC_CONFIG_REG2;
+	SYNC_CONFIG_NEG; SYNC_CONFIG_RUN;
 	SYNC_STEP_DUR = 0xFFFF;
 	SYNC_PULSE_DUR = SYNC_STEP_DUR/2;
 	
 #ifdef FGR_DRV_IO_T0OC_HW_FOUND
 	// Configure active line timer.
 	LACT_CONFIG_REG1; LACT_CONFIG_REG2;
-	// Force OC pin LOW (workaround for skewed timing to prevent H-sync corruption).
-	LACT_OC_FORCE;
-	LACT_PULSE_DUR = 100;
-	LACT_EN_INTR;
+	LACT_PULSE_DUR = 0xFF;
+	LACT_START;
 #endif
 	
 	// Enable draw starting interrupts.
-	// INT0 tied to Timer1 compare output is used to trigger Timer0 to generate active region pulse.
+	// INT0 tied to Timer1 compare output is used to re-configure PWM for H-sync.
 	INT0_CONFIG_PIN1; INT0_CONFIG_PIN2;
 	INT0_CONFIG_REG; INT0_EN;
 }

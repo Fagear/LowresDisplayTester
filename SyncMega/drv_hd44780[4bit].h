@@ -15,7 +15,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
-Created: 2009-04
+Created: 2009-03
 
 Part of the [LowresDisplayTester] project.
 HD44780-compatible (HD44780/KS0066/ÊÁ1013ÂÃ6/SPLC780) character display driver
@@ -51,6 +51,8 @@ Service functions for buffered access start from "HD44780_buf_" instead of "HD44
 #ifndef FR_DRV_HD44780_4BIT
 #define FR_DRV_HD44780_4BIT		1
 
+#ifdef HD44780_USE_SCREEN_BUFFERS
+
 #include "drv_cpu.h"						// Contains [F_CPU].
 #include "drv_io.h"
 #include <avr/io.h>
@@ -62,9 +64,8 @@ Service functions for buffered access start from "HD44780_buf_" instead of "HD44
 //#define HD44780_RU_REENCODE					// Enable re-encoding Cyrillic for displays without CP1251 support
 
 // HD44780 display interface hardware.
-#ifdef HD44780_A0
-	#pragma message("HD44780 driver is using externally set IO pins")
-#else
+#ifndef HD44780_A0
+	#pragma message("HD44780 driver is using internal defines for IO pins")
 	#define HD44780CTRL_DIR		DDRD
 	#define HD44780CTRL_PORT	PORTD
 	#define HD44780DATA_DIR		DDRC
@@ -236,5 +237,7 @@ uint8_t HD44780_upload_symbol_flash(uint8_t symbol_number, const int8_t *symbol_
 	uint8_t HD44780_buf_write_flash_string(const int8_t *str_output);
 	uint8_t HD44780_buf_clear_line(const uint8_t line_idx);
 #endif	// HD44780_USE_SCREEN_BUFFERS
+
+#endif /* HD44780_USE_SCREEN_BUFFERS */
 
 #endif // FR_DRV_HD44780_4BIT

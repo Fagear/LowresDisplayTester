@@ -1,10 +1,31 @@
-/*
- * test_chardisp.h
- *
- * Created: 01.02.2024 17:18:23
- *  Author: kryukov
- */ 
+/**************************************************************************************************************************************************************
+test_chardisp.h
 
+Copyright © 2024 Maksim Kryukov <fagear@mail.ru>
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+Created: 2024-02
+
+Part of the [LowresDisplayTester] project.
+Character display test module.
+Performs drawing strings and animations on a character display
+via provided callback functions of the display driver.
+
+Callbacks must be provided through [chardisp_set_device()] function
+before animations can be stepped with [chardisp_step_animation()] function.
+
+**************************************************************************************************************************************************************/
 
 #ifndef TEST_CHARDISP_H_
 #define TEST_CHARDISP_H_
@@ -23,7 +44,7 @@
 		C_CHAR_5,
 		C_CHAR_6,
 		C_CHAR_7,
-		CHAR_SPACE = 0x20,
+		CHAR_SPACE = 0x20,	// ASCII space code
 	};
 
 	enum

@@ -111,9 +111,9 @@ Supported MCUs:	ATmega8(-/A), ATmega16(-/A), ATmega32(-/A), ATmega48(-/A/P/AP), 
 #define SPI_TX_START		SPI_PORT &= ~SPI_CS
 #define SPI_TX_END			SPI_PORT |= SPI_CS
 #define SPI_CONFIG_MSTR_M0	SPI_CONTROL = (0<<DORD)|(1<<MSTR)|(0<<CPOL)|(0<<CPHA)	// Configure SPI for Master operation Mode 0 (sample on rising, setup on falling)
-#define SPI_CONFIG_MSTR_M1	SPI_CONTROL = (0<<DORD)|(1<<MSTR)|(0<<CPOL)|(0<<CPHA)	// Configure SPI for Master operation Mode 1 (setup on rising, sample on falling)
-#define SPI_CONFIG_MSTR_M2	SPI_CONTROL = (0<<DORD)|(1<<MSTR)|(0<<CPOL)|(0<<CPHA)	// Configure SPI for Master operation Mode 2 (sample on falling, setup on rising)
-#define SPI_CONFIG_MSTR_M3	SPI_CONTROL = (0<<DORD)|(1<<MSTR)|(0<<CPOL)|(0<<CPHA)	// Configure SPI for Master operation Mode 3 (setup on falling, sample on rising)
+#define SPI_CONFIG_MSTR_M1	SPI_CONTROL = (0<<DORD)|(1<<MSTR)|(0<<CPOL)|(1<<CPHA)	// Configure SPI for Master operation Mode 1 (setup on rising, sample on falling)
+#define SPI_CONFIG_MSTR_M2	SPI_CONTROL = (0<<DORD)|(1<<MSTR)|(1<<CPOL)|(0<<CPHA)	// Configure SPI for Master operation Mode 2 (sample on falling, setup on rising)
+#define SPI_CONFIG_MSTR_M3	SPI_CONTROL = (0<<DORD)|(1<<MSTR)|(1<<CPOL)|(1<<CPHA)	// Configure SPI for Master operation Mode 3 (setup on falling, sample on rising)
 #define SPI_START			SPI_CONTROL |= (1<<SPE)			// Start SPI HW
 #define SPI_STOP			SPI_CONTROL &= ~(1<<SPE)		// Stop SPI HW
 #define SPI_INT_EN			SPI_CONTROL |= (1<<SPIE)		// Enable interrupt on transfer completion
