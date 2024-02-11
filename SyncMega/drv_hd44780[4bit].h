@@ -18,7 +18,7 @@ limitations under the License.
 Created: 2009-03
 
 Part of the [LowresDisplayTester] project.
-HD44780-compatible (HD44780/KS0066/ÊÁ1013ÂÃ6/SPLC780) character display driver
+HD44780-compatible (HD44780/KS0066/ÊÁ1013ÂÃ6/PT6314/SPLC780/US2066) character display driver
 for AVR MCUs and AVRStudio/WinAVR/AtmelStudio compilers.
 
 This driver utilizes 4-bit data bus connection and BUSY-flag reading based operations.
@@ -84,9 +84,15 @@ Service functions for buffered access start from "HD44780_buf_" instead of "HD44
 
 #define HD44780_MAX_COL		40				// Number of visible columns of the connected display
 #define HD44780_MAX_ROWS	4				// Number of visible rows of the connected display
-#define HD44780_TEST_CHAR1	0x5A			// Char for display RAM testing, pattern 1
-#define HD44780_TEST_CHAR2	0xA5			// Char for display RAM testing, pattern 2
-#define HD44780_TEST_ADDR	0x67			// Display RAM address for testing data bus
+
+// Bus and RAM test data.
+enum
+{
+	HD44780_TEST_CHAR1 = 0x5A,				// Char for display RAM testing, pattern 1
+	HD44780_TEST_CHAR2 = 0xA5,				// Char for display RAM testing, pattern 2
+	HD44780_TEST_ADDR = 0x67,				// Display RAM address for testing data bus
+	HD44780_TEST_CG_MASK = 0x1F,			// Mask for CGRAM area (PT6314 doesn't allow MSBs to change)
+};
 
 // MSBs for writing a command.
 enum
@@ -241,5 +247,7 @@ uint8_t HD44780_upload_symbol_flash(uint8_t symbol_number, const int8_t *symbol_
 #endif	// HD44780_USE_SCREEN_BUFFERS
 
 #endif /* CONF_EN_HD44780 */
+
+// PT6314 always returns "010x" as MSBs of CG RAM reads.
 
 #endif // FR_DRV_HD44780_4BIT

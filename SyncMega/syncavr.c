@@ -451,17 +451,32 @@ inline void system_startup(void)
 	WDT_PREP_OFF;
 	WDT_SW_OFF;
 	WDT_FLUSH_REASON;
+	// Enable watchdog.
+	WDT_PREP_ON;
+	WDT_SW_ON;
+	wdt_reset();
 	
 	// Init hardware resources.
 	HW_init();
 	// Preload some values to sync timer.
 	SYNC_STEP_DUR = COMP_HALF_LEN_525i;			// Load duration of the H-cycle.
 	SYNC_PULSE_DUR = COMP_SYNC_V_LEN_525i;		// Load duration of the H-pulse.
+	SYNC_DATA = 0;
+	LACT_DATA = 0;
 	
-	// Enable watchdog.
-	WDT_PREP_ON;
-	WDT_SW_ON;
-	wdt_reset();
+#ifdef FGR_DRV_UARTSPI_HW_FOUND
+	UART_SPI_CONFIG_M0;
+	UART_SPI_set_target_clock(BAR_FREQ_500Hz);
+	UART_SPI_START;
+#endif /* FGR_DRV_UARTSPI_HW_FOUND */
+#ifdef FGR_DRV_SPI_HW_FOUND
+	SPI_CONFIG_MSTR_M0;
+	//SPI_set_target_clock(BAR_FREQ_500Hz);
+	SPI_CONTROL &= ~(1<<SPR0);
+	SPI_CONTROL |= (1<<SPR1);
+	SPI_STATUS = (1<<SPI2X);
+	SPI_START; SPI_INT_EN;
+#endif /* FGR_DRV_SPI_HW_FOUND */
 }
 
 //-------------------------------------- Keyboard scan routine.
@@ -585,22 +600,6 @@ int main(void)
 	}*/
 #endif /* CONF_EN_HD44780 */
 	
-#ifdef FGR_DRV_UARTSPI_HW_FOUND
-	UART_SPI_CONFIG_M0;
-	UART_SPI_set_target_clock(BAR_FREQ_500Hz);
-	UART_SPI_START;
-#endif /* FGR_DRV_UARTSPI_HW_FOUND */
-#ifdef FGR_DRV_SPI_HW_FOUND
-	SPI_CONFIG_MSTR_M0;
-	//SPI_set_target_clock(BAR_FREQ_500Hz);
-	SPI_CONTROL &= ~(1<<SPR0);
-	SPI_CONTROL |= (1<<SPR1);
-	SPI_STATUS = (1<<SPI2X);
-	SPI_START; SPI_INT_EN;
-#endif /* FGR_DRV_SPI_HW_FOUND */
-	SYNC_DATA = 0;
-	LACT_DATA = 0;
-	
 	tasks |= TASK_SEC_TICK;
 	
 	// Enable interrupts globally.
@@ -642,6 +641,7 @@ int main(void)
 				}
 #endif /* CONF_EN_HD44780 */
 			}
+			I2C_master_processor();
 #ifdef CONF_EN_HD44780
 			// Check if HD44780-compatible display is detected.
 			if((disp_presence&HW_DISP_44780)!=0)

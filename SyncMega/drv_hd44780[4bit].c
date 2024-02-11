@@ -564,7 +564,7 @@ uint8_t HD44780_set_xy_position(uint8_t x_pos, uint8_t y_pos)
 
 //-------------------------------------- Read from DDRAM until stable results.
 // Some displays are fast (instant ready), but lag in updating DRAM anyway.
-// (US2066 OLEDs, ahem)
+// (US2066 OLEDs, PT6314 VFDs, ahem)
 uint8_t HD44780_ddram_read(uint8_t x_pos, uint8_t *read_result)
 {
 	uint8_t error_collector = 0, read_tries, arr_idx;
@@ -610,7 +610,7 @@ uint8_t HD44780_ddram_read(uint8_t x_pos, uint8_t *read_result)
 
 //-------------------------------------- Read from CGRAM until stable results.
 // Some displays are fast (instant ready), but lag in updating DRAM anyway.
-// (US2066 OLEDs, ahem)
+// (US2066 OLEDs, PT6314 VFDs, ahem)
 uint8_t HD44780_cgram_read(uint8_t char_idx, uint8_t *read_result)
 {
 	uint8_t error_collector = 0, read_tries, arr_idx;
@@ -697,10 +697,10 @@ uint8_t HD44780_selftest(void)
 		// Re-set CGRAM address.
 		error_collector += HD44780_write_byte((HD44780_CMD_SCGR|idx), HD44780_CMD);
 		// Write test pattern.
-		error_collector += HD44780_write_byte(HD44780_TEST_CHAR1, HD44780_DATA);
+		error_collector += HD44780_write_byte((HD44780_TEST_CHAR1&HD44780_TEST_CG_MASK), HD44780_DATA);
 		// Read pattern back.
 		error_collector += HD44780_cgram_read(idx, &check_byte);
-		if(check_byte!=HD44780_TEST_CHAR1)
+		if((check_byte&HD44780_TEST_CG_MASK)!=(HD44780_TEST_CHAR1&HD44780_TEST_CG_MASK))
 		{
 			return HD44780_ERR_BUS;
 		}
@@ -710,9 +710,9 @@ uint8_t HD44780_selftest(void)
 		}
 		// Repeat with 2nd test pattern.
 		error_collector += HD44780_write_byte((HD44780_CMD_SCGR|idx), HD44780_CMD);
-		error_collector += HD44780_write_byte(HD44780_TEST_CHAR2, HD44780_DATA);
+		error_collector += HD44780_write_byte((HD44780_TEST_CHAR2&HD44780_TEST_CG_MASK), HD44780_DATA);
 		error_collector += HD44780_cgram_read(idx, &check_byte);
-		if(check_byte!=HD44780_TEST_CHAR2)
+		if((check_byte&HD44780_TEST_CG_MASK)!=(HD44780_TEST_CHAR2&HD44780_TEST_CG_MASK))
 		{
 			return HD44780_ERR_BUS;
 		}

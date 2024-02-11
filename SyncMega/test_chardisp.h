@@ -47,22 +47,28 @@ before animations can be stepped with [chardisp_step_animation()] function.
 		CHAR_SPACE = 0x20,	// ASCII space code
 	};
 
+	// Stages of test.
 	enum
 	{
-		ST_TEXT_DET,
+		ST_TEXT_DET,		// Print out "Detected" message only after display first found
 		ST_TEXT_1x8,
 		ST_TEXT_1x16,
 		ST_TEXT_1x20,
 		ST_TEXT_1x24,
 		ST_TEXT_1x40,
-		ST_ROTATE,
+		ST_ROTATE,			// Display rotating animation on 8x1 brackets
 		ST_TEXT_PAUSE,
 		ST_TEXT_2x8,
 		ST_TEXT_2x16,
 		ST_TEXT_2x20,
 		ST_TEXT_2x24,
 		ST_TEXT_4x20,
-		ST_LEVELS,
+		ST_LEVELS,			// Fill screen with bar graphs
+		ST_SPIRAL,			// Draw circle and spiral animations
+		ST_FADEOUT,			// Draw top to bottom fadeout animation
+		ST_CP_FILL,			// Print all symbols from codepage
+		ST_TEXT_PAUSE2,
+		ST_END_CLEAR,
 		ST_TEXT_MAX
 	};
 	
@@ -77,9 +83,13 @@ before animations can be stepped with [chardisp_step_animation()] function.
 	void chardisp_reset_anim(void);
 	uint8_t chardisp_cycle_done(void);
 	uint8_t chardisp_fill(uint8_t count, uint8_t symbol);
+	uint8_t chardisp_clear(void);
 	uint8_t chardisp_step_ani_rotate(uint8_t *err_mask);
 	uint8_t chardisp_step_ani_levels(uint8_t *err_mask);
-	uint8_t chardisp_step_animation(uint8_t sec_tick);
+	uint8_t chardisp_step_ani_spiral(uint8_t *err_mask);
+	uint8_t chardisp_step_ani_fade(uint8_t *err_mask);
+	uint8_t chardisp_step_ani_cp_fill(uint8_t *err_mask);
+	uint8_t chardisp_step_animation(uint8_t switch_tick);
 #endif /* CONF_EN_CHARDISP */
 
 #endif /* TEST_CHARDISP_H_ */

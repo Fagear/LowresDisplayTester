@@ -196,11 +196,11 @@ enum
 };
 
 // I2C driver configuration.
-//#define I2C_ENABLE_LOG			1			// Enable verbose logging
+//#define I2C_ENABLE_UART_LOG			1			// Enable verbose logging
 #define I2C_MAX_SEND_LEN		4			// Maximum length (in bytes) of single data transmittion
 #define I2C_MAX_ERRORS			5			// Number of I2C transmittion failures before setting "device offline" flag
 #define I2C_MASTER_EN			1			// Enable I2C-Master functions
-//#define I2C_SLAVE_EN			1			// Enable I2C-Master functions
+//#define I2C_SLAVE_EN			1			// Enable I2C-Slave functions
 
 void I2C_set_speed(uint16_t);		// Set I2C speed with "I2C_SPD__xxxKHZ" defines
 void I2C_set_speed_100kHz();		// Set I2C clock to 100 kHz

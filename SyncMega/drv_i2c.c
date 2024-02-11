@@ -52,7 +52,7 @@ void I2C_master_processor(void)
 	{
 		// Bus error, lost arbitration.
 		u8_i2c_error = I2C_ERR_NO;
-#ifdef I2C_ENABLE_LOG
+#ifdef I2C_ENABLE_UART_LOG
 		UART_debug_add_flash_string(cch_dbg_i2c_00, (u8_dbg_enabled&DBG_EN_I2C_L1));
 #endif
 		// Switch I2C off, terminate everything until next call.
@@ -69,7 +69,7 @@ void I2C_master_processor(void)
 	{
 		// NACK while sending.
 		u8_i2c_error = I2C_ERR_M_NACK;
-#ifdef I2C_ENABLE_LOG
+#ifdef I2C_ENABLE_UART_LOG
 		UART_debug_add_flash_string(cch_dbg_i2c_20, (u8_dbg_enabled&DBG_EN_I2C_L1));
 #endif
 		// Switch I2C off, terminate everything until next poll.
@@ -87,7 +87,7 @@ void I2C_master_processor(void)
 	else if(tmp_data==I2C_STAT_START)
 	{
 		// START is sent.
-#ifdef I2C_ENABLE_LOG		
+#ifdef I2C_ENABLE_UART_LOG		
 		UART_debug_add_flash_string(cch_dbg_i2c_08, (u8_dbg_enabled&DBG_EN_I2C_L1));
 #endif		
 		// All transmittions start with writing command ID, A+W every time.
@@ -102,7 +102,7 @@ void I2C_master_processor(void)
 		if((u8_i2c_mode==I2C_MODE_WR_SPD)||(u8_i2c_mode==I2C_MODE_WR_POS)||(u8_i2c_mode==I2C_MODE_WR_FLAGS)||
 			(u8_i2c_mode==I2C_MODE_RD_MOVE_S)||(u8_i2c_mode==I2C_MODE_RD_POS_S)||(u8_i2c_mode==I2C_MODE_RD_SPD_S)||(u8_i2c_mode==I2C_MODE_RD_D_S))
 		{
-#ifdef I2C_ENABLE_LOG			
+#ifdef I2C_ENABLE_UART_LOG			
 			UART_debug_add_flash_string(cch_dbg_i2c_10w, (u8_dbg_enabled&DBG_EN_I2C_L1));
 #endif			
 			// Send A+W.
@@ -110,7 +110,7 @@ void I2C_master_processor(void)
 		}
 		else
 		{
-#ifdef I2C_ENABLE_LOG			
+#ifdef I2C_ENABLE_UART_LOG			
 			UART_debug_add_flash_string(cch_dbg_i2c_10r, (u8_dbg_enabled&DBG_EN_I2C_L1));
 #endif			
 			// Send A+R.
@@ -124,7 +124,7 @@ void I2C_master_processor(void)
 		// Pre-set data limits.
 		u8_i2c_total_bytes = 0;
 		u8_i2c_current_byte = 0;
-#ifdef I2C_ENABLE_LOG		
+#ifdef I2C_ENABLE_UART_LOG		
 		UART_debug_add_flash_string(cch_dbg_i2c_18, (u8_dbg_enabled&DBG_EN_I2C_L1));
 #endif		
 		// Need to send command byte.
@@ -144,7 +144,7 @@ void I2C_master_processor(void)
 		// Data byte is sent, ACK received.
 		if(u8_i2c_current_byte<u8_i2c_total_bytes)
 		{
-#ifdef I2C_ENABLE_LOG
+#ifdef I2C_ENABLE_UART_LOG
 			UART_debug_add_flash_string(cch_dbg_i2c_28a, (u8_dbg_enabled&DBG_EN_I2C_L1));
 #endif
 			// Output next byte from queue.
@@ -155,7 +155,7 @@ void I2C_master_processor(void)
 		else
 		{
 			// Transmittion finished.
-#ifdef I2C_ENABLE_LOG
+#ifdef I2C_ENABLE_UART_LOG
 			UART_debug_add_flash_string(cch_dbg_i2c_28b, (u8_dbg_enabled&DBG_EN_I2C_L1));
 #endif
 			// Choose next I2C mode (part of the default I2C modes route).
@@ -194,14 +194,14 @@ void I2C_master_processor(void)
 		// Set (N)ACK action for the next received byte.
 		if(u8_i2c_total_bytes<2)
 		{
-#ifdef I2C_ENABLE_LOG
+#ifdef I2C_ENABLE_UART_LOG
 			UART_debug_add_flash_string(cch_dbg_i2c_40a, (u8_dbg_enabled&DBG_EN_I2C_L1));
 #endif
 			I2C_READ_ONE;
 		}
 		else
 		{
-#ifdef I2C_ENABLE_LOG
+#ifdef I2C_ENABLE_UART_LOG
 			UART_debug_add_flash_string(cch_dbg_i2c_40b, (u8_dbg_enabled&DBG_EN_I2C_L1));
 #endif
 			I2C_READ_NEXT;
@@ -216,7 +216,7 @@ void I2C_master_processor(void)
 		u8_i2c_current_byte++;
 		if(u8_i2c_current_byte==u8_i2c_total_bytes)
 		{
-#ifdef I2C_ENABLE_LOG
+#ifdef I2C_ENABLE_UART_LOG
 			UART_debug_add_flash_string(cch_dbg_i2c_50a, (u8_dbg_enabled&DBG_EN_I2C_L1));
 #endif
 			// Next received byte will be NACKed.
@@ -224,7 +224,7 @@ void I2C_master_processor(void)
 		}
 		else
 		{
-#ifdef I2C_ENABLE_LOG
+#ifdef I2C_ENABLE_UART_LOG
 			UART_debug_add_flash_string(cch_dbg_i2c_50b, (u8_dbg_enabled&DBG_EN_I2C_L1));
 #endif
 			// Next received byte will be ACKed.
@@ -233,7 +233,7 @@ void I2C_master_processor(void)
 	}
 	else if(tmp_data==I2C_STAT_R_DATA_N)
 	{
-#ifdef I2C_ENABLE_LOG
+#ifdef I2C_ENABLE_UART_LOG
 		UART_debug_add_flash_string(cch_dbg_i2c_58, (u8_dbg_enabled&DBG_EN_I2C_L1));
 #endif
 		// Last data byte is received, NACK returned.
@@ -293,7 +293,7 @@ void I2C_master_processor(void)
 			I2C_SW_OFF;
 		}
 	}
-#ifdef I2C_ENABLE_LOG
+#ifdef I2C_ENABLE_UART_LOG
 	UART_dump_out();
 #endif
 }
