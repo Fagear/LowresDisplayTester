@@ -22,9 +22,37 @@ static uint8_t (*chardisp_write_flash_string)(const int8_t *str_output);
 void chardisp_set_device(void *f_upload, void *f_setpos, void *f_wr_char, void *f_wr_line)
 {
 	chardisp_upload_symbol_flash = (uint8_t (*)(uint8_t, const int8_t *))f_upload;
-	chardisp_set_xy_position = (uint8_t (*)(uint8_t, uint8_t))f_upload;
+	chardisp_set_xy_position = (uint8_t (*)(uint8_t, uint8_t))f_setpos;
 	chardisp_write_char = (uint8_t (*)(const uint8_t))f_wr_char;
 	chardisp_write_flash_string = (uint8_t (*)(const int8_t *))f_wr_line;
+}
+
+//-------------------------------------- Reset animation step.
+void chardisp_reset_anim(void)
+{
+	chardisp_page_step = ST_TEXT_DET;
+}
+
+//-------------------------------------- Check if animation cycle is done.
+uint8_t chardisp_cycle_done(void)
+{
+	if((chardisp_page_step==ST_TEXT_1x8)&&
+		(chardisp_ani_step==0))
+	{
+		return ST_ANI_DONE;
+	}
+	return ST_ANI_BUSY;
+}
+
+//-------------------------------------- Fill display from current position +[count] with [symbol].
+uint8_t chardisp_fill(uint8_t count, uint8_t symbol)
+{
+	uint8_t error_mask = 0;
+	for(uint8_t idx=0;idx<count;idx++)
+	{
+		error_mask += chardisp_write_char(symbol);
+	}
+	return error_mask;
 }
 
 //-------------------------------------- Draw spinning animation.
@@ -67,6 +95,7 @@ uint8_t chardisp_step_ani_rotate(uint8_t *err_mask)
 		// Rotate 135/225 phase, step 4.
 		(*err_mask) += chardisp_set_xy_position(0, 0);
 		(*err_mask) += chardisp_write_char(C_CHAR_7);
+
 		(*err_mask) += chardisp_set_xy_position(7, 0);
 		(*err_mask) += chardisp_write_char(C_CHAR_5);
 	}
@@ -86,6 +115,11 @@ uint8_t chardisp_step_ani_levels(uint8_t *err_mask)
 	uint8_t idx, xcoord;
 	if(chardisp_ani_step==0)
 	{
+		// Clear screen.
+		(*err_mask) += chardisp_set_xy_position(0, 0);
+		(*err_mask) += chardisp_fill(40, CHAR_SPACE);
+		(*err_mask) += chardisp_set_xy_position(0, 1);
+		(*err_mask) += chardisp_fill(40, CHAR_SPACE);
 		// Load custom font.
 		(*err_mask) += chardisp_upload_symbol_flash(C_CHAR_0, usr_char_lvl1);	// Horizontal "no level"
 		(*err_mask) += chardisp_upload_symbol_flash(C_CHAR_1, usr_char_lvl2);	// Horizontal "low level"
@@ -108,7 +142,7 @@ uint8_t chardisp_step_ani_levels(uint8_t *err_mask)
 		(*err_mask) += chardisp_upload_symbol_flash(C_CHAR_4, usr_char_lvl33);	// Vertical "low level" for even rows
 		(*err_mask) += chardisp_upload_symbol_flash(C_CHAR_5, usr_char_lvl32);	// Vertical "mid level" for even rows
 		(*err_mask) += chardisp_upload_symbol_flash(C_CHAR_6, usr_char_lvl31);	// Vertical "high level" for even rows
-		(*err_mask) += chardisp_upload_symbol_flash(C_CHAR_7, usr_char_lvl8);	// Full fill for even rows.
+		(*err_mask) += chardisp_upload_symbol_flash(C_CHAR_7, usr_char_fill);	// Full fill for even rows.
 	}
 	else if((chardisp_ani_step>=42)&&(chardisp_ani_step<=161))
 	{
@@ -160,7 +194,7 @@ uint8_t chardisp_step_ani_levels(uint8_t *err_mask)
 	else if(chardisp_ani_step==168)
 	{
 		// Transition from horizontal "high level" to "full fill" on the whole display, step 4.
-		(*err_mask) += chardisp_upload_symbol_flash(C_CHAR_3, usr_char_lvl8);
+		(*err_mask) += chardisp_upload_symbol_flash(C_CHAR_3, usr_char_fill);
 	}
 	else if(chardisp_ani_step==170)
 	{
@@ -354,7 +388,7 @@ uint8_t chardisp_step_ani_levels(uint8_t *err_mask)
 uint8_t chardisp_step_animation(uint8_t sec_tick)
 {
 	uint8_t err_collector = 0;
-	if(chardisp_page_step==ST_TEXT_0)
+	if(chardisp_page_step==ST_TEXT_DET)
 	{
 		// Check if page was drawn.
 		if(chardisp_ani_step==0)
@@ -364,18 +398,16 @@ uint8_t chardisp_step_animation(uint8_t sec_tick)
 			// Draw the page.
 			err_collector += chardisp_set_xy_position(0, 0);
 			err_collector += chardisp_write_flash_string(chardisp_det);
-			//tasks &= ~TASK_SEC_TICK;
 		}
 		else if(sec_tick!=0)
 		{
 			// Page already drawn and got one second tick.
-			//tasks &= ~TASK_SEC_TICK;
 			// Go to the next page.
 			chardisp_page_step++;
 			chardisp_ani_step = 0;
 		}
 	}
-	else if(chardisp_page_step==ST_TEXT_1)
+	else if(chardisp_page_step==ST_TEXT_1x8)
 	{
 		// Check if page was drawn.
 		if(chardisp_ani_step==0)
@@ -385,18 +417,16 @@ uint8_t chardisp_step_animation(uint8_t sec_tick)
 			// Draw the page.
 			err_collector += chardisp_set_xy_position(0, 0);
 			err_collector += chardisp_write_flash_string(chardisp_dsp_1x8);
-			//tasks &= ~TASK_SEC_TICK;
 		}
 		else if(sec_tick!=0)
 		{
 			// Page already drawn and got one second tick.
-			//tasks &= ~TASK_SEC_TICK;
 			// Go to the next page.
 			chardisp_page_step++;
 			chardisp_ani_step = 0;
 		}
 	}
-	else if(chardisp_page_step==ST_TEXT_2)
+	else if(chardisp_page_step==ST_TEXT_1x16)
 	{
 		// Check if page was drawn.
 		if(chardisp_ani_step==0)
@@ -404,22 +434,20 @@ uint8_t chardisp_step_animation(uint8_t sec_tick)
 			// Not yet.
 			chardisp_ani_step++;
 			// Draw the page.
-			err_collector += chardisp_set_xy_position(10, 0);
+			err_collector += chardisp_set_xy_position(12, 0);
 			err_collector += chardisp_write_flash_string(chardisp_dsp_x16);
 			err_collector += chardisp_set_xy_position(0, 1);
 			err_collector += chardisp_write_flash_string(chardisp_dsp_row2);
-			//tasks &= ~TASK_SEC_TICK;
 		}
 		else if(sec_tick!=0)
 		{
 			// Page already drawn and got one second tick.
-			//tasks &= ~TASK_SEC_TICK;
 			// Go to the next page.
 			chardisp_page_step++;
 			chardisp_ani_step = 0;
 		}
 	}
-	else if(chardisp_page_step==ST_TEXT_3)
+	else if(chardisp_page_step==ST_TEXT_1x20)
 	{
 		// Check if page was drawn.
 		if(chardisp_ani_step==0)
@@ -429,20 +457,16 @@ uint8_t chardisp_step_animation(uint8_t sec_tick)
 			// Draw the page.
 			err_collector += chardisp_set_xy_position(16, 0);
 			err_collector += chardisp_write_flash_string(chardisp_dsp_x20);
-			//err_collector += chardisp_set_xy_position(0, 2);
-			//err_collector += chardisp_write_flash_string(hd44780_dsp_row3);
-			//tasks &= ~TASK_SEC_TICK;
 		}
 		else if(sec_tick!=0)
 		{
 			// Page already drawn and got one second tick.
-			//tasks &= ~TASK_SEC_TICK;
 			// Go to the next page.
 			chardisp_page_step++;
 			chardisp_ani_step = 0;
 		}
 	}
-	else if(chardisp_page_step==ST_TEXT_4)
+	else if(chardisp_page_step==ST_TEXT_1x24)
 	{
 		// Check if page was drawn.
 		if(chardisp_ani_step==0)
@@ -452,20 +476,16 @@ uint8_t chardisp_step_animation(uint8_t sec_tick)
 			// Draw the page.
 			err_collector += chardisp_set_xy_position(20, 0);
 			err_collector += chardisp_write_flash_string(chardisp_dsp_x24);
-			//err_collector += chardisp_set_xy_position(0, 3);
-			//err_collector += chardisp_write_flash_string(hd44780_dsp_row4);
-			//tasks &= ~TASK_SEC_TICK;
 		}
 		else if(sec_tick!=0)
 		{
 			// Page already drawn and got one second tick.
-			//tasks &= ~TASK_SEC_TICK;
 			// Go to the next page.
 			chardisp_page_step++;
 			chardisp_ani_step = 0;
 		}
 	}
-	else if(chardisp_page_step==ST_TEXT_5)
+	else if(chardisp_page_step==ST_TEXT_1x40)
 	{
 		// Check if page was drawn.
 		if(chardisp_ani_step==0)
@@ -475,25 +495,234 @@ uint8_t chardisp_step_animation(uint8_t sec_tick)
 			// Draw the page.
 			err_collector += chardisp_set_xy_position(36, 0);
 			err_collector += chardisp_write_flash_string(chardisp_dsp_x40);
-			//tasks &= ~TASK_SEC_TICK;
+			err_collector += chardisp_set_xy_position(6, 3);
+			err_collector += chardisp_write_flash_string(chardisp_dsp_row4);
 		}
 		else if(sec_tick!=0)
 		{
 			// Page already drawn and got one second tick.
-			//tasks &= ~TASK_SEC_TICK;
 			// Go to the next page.
 			chardisp_page_step++;
 			chardisp_ani_step = 0;
 		}
 	}
-	else if(chardisp_page_step==ST_TEXT_6)
+	else if(chardisp_page_step==ST_TEXT_PAUSE)
 	{
-		if(chardisp_step_ani_rotate(&err_collector)==ST_ANI_DONE)
+		if(sec_tick!=0)
 		{
+			// Page already drawn and got one second tick.
+			// Go to the next page.
 			chardisp_page_step++;
 		}
 	}
-	else if(chardisp_page_step==ST_TEXT_7)
+	else if(chardisp_page_step==ST_TEXT_2x8)
+	{
+		// Check if page was drawn.
+		if(chardisp_ani_step==0)
+		{
+			// Not yet.
+			chardisp_ani_step++;
+			// Clear screen.
+			err_collector += chardisp_set_xy_position(0, 0);
+			err_collector += chardisp_fill(40, CHAR_SPACE);
+			err_collector += chardisp_set_xy_position(0, 1);
+			err_collector += chardisp_fill(40, CHAR_SPACE);
+			// Draw the page.
+			err_collector += chardisp_set_xy_position(0, 0);
+			err_collector += chardisp_write_flash_string(chardisp_dsp_1x8);
+			err_collector += chardisp_set_xy_position(0, 1);
+			err_collector += chardisp_write_flash_string(chardisp_dsp_row2_2);
+		}
+		else if(sec_tick!=0)
+		{
+			// Page already drawn and got one second tick.
+			// Go to the next page.
+			chardisp_page_step++;
+			chardisp_ani_step = 0;
+		}
+	}
+	else if(chardisp_page_step==ST_TEXT_2x16)
+	{
+		// Check if page was drawn.
+		if(chardisp_ani_step==0)
+		{
+			// Not yet.
+			chardisp_ani_step++;
+			// Load custom symbols.
+			err_collector += chardisp_upload_symbol_flash(C_CHAR_0, usr_char_triag1);
+			err_collector += chardisp_upload_symbol_flash(C_CHAR_1, usr_char_triag2);
+			err_collector += chardisp_upload_symbol_flash(C_CHAR_2, usr_char_triag3);
+			err_collector += chardisp_upload_symbol_flash(C_CHAR_3, usr_char_triag4);
+			err_collector += chardisp_upload_symbol_flash(C_CHAR_4, usr_char_fill);
+			err_collector += chardisp_upload_symbol_flash(C_CHAR_5, usr_char_dot);
+			// Draw the page.
+			err_collector += chardisp_set_xy_position(0, 0);
+			err_collector += chardisp_write_flash_string(chardisp_dsp_row1_2);
+			err_collector += chardisp_set_xy_position(0, 1);
+			err_collector += chardisp_write_flash_string(chardisp_dsp_row2_2);
+			err_collector += chardisp_set_xy_position(12, 0);
+			err_collector += chardisp_write_flash_string(chardisp_dsp_x16);
+			err_collector += chardisp_set_xy_position(12, 1);
+			err_collector += chardisp_write_flash_string(chardisp_dsp_x16);
+			err_collector += chardisp_set_xy_position(7, 0);
+			err_collector += chardisp_write_char(C_CHAR_0);
+			err_collector += chardisp_write_char(C_CHAR_4);
+			err_collector += chardisp_write_char(C_CHAR_4);
+			err_collector += chardisp_write_char(C_CHAR_1);
+			err_collector += chardisp_set_xy_position(7, 1);
+			err_collector += chardisp_write_char(C_CHAR_3);
+			err_collector += chardisp_write_char(C_CHAR_4);
+			err_collector += chardisp_write_char(C_CHAR_4);
+			err_collector += chardisp_write_char(C_CHAR_2);
+		}
+		else if(sec_tick!=0)
+		{
+			// Page already drawn and got one second tick.
+			// Go to the next page.
+			chardisp_page_step++;
+			chardisp_ani_step = 0;
+		}
+	}
+	else if(chardisp_page_step==ST_TEXT_2x20)
+	{
+		// Check if page was drawn.
+		if(chardisp_ani_step==0)
+		{
+			// Not yet.
+			chardisp_ani_step++;
+			// Draw the page.
+			err_collector += chardisp_set_xy_position(6, 0);
+			err_collector += chardisp_fill(10, CHAR_SPACE);
+			err_collector += chardisp_write_flash_string(chardisp_dsp_x20);
+			err_collector += chardisp_set_xy_position(6, 1);
+			err_collector += chardisp_fill(10, CHAR_SPACE);
+			err_collector += chardisp_write_flash_string(chardisp_dsp_x20);
+			err_collector += chardisp_set_xy_position(9, 0);
+			err_collector += chardisp_write_char(C_CHAR_0);
+			err_collector += chardisp_write_char(C_CHAR_4);
+			err_collector += chardisp_write_char(C_CHAR_4);
+			err_collector += chardisp_write_char(C_CHAR_1);
+			err_collector += chardisp_set_xy_position(9, 1);
+			err_collector += chardisp_write_char(C_CHAR_3);
+			err_collector += chardisp_write_char(C_CHAR_4);
+			err_collector += chardisp_write_char(C_CHAR_4);
+			err_collector += chardisp_write_char(C_CHAR_2);
+		}
+		else if(sec_tick!=0)
+		{
+			// Page already drawn and got one second tick.
+			// Go to the next page.
+			chardisp_page_step++;
+			chardisp_ani_step = 0;
+		}
+	}
+	else if(chardisp_page_step==ST_TEXT_2x24)
+	{
+		// Check if page was drawn.
+		if(chardisp_ani_step==0)
+		{
+			// Not yet.
+			chardisp_ani_step++;
+			// Draw the page.
+			err_collector += chardisp_set_xy_position(9, 0);
+			err_collector += chardisp_fill(11, CHAR_SPACE);
+			err_collector += chardisp_write_flash_string(chardisp_dsp_x24);
+			err_collector += chardisp_set_xy_position(9, 1);
+			err_collector += chardisp_fill(11, CHAR_SPACE);
+			err_collector += chardisp_write_flash_string(chardisp_dsp_x24);
+			err_collector += chardisp_set_xy_position(11, 0);
+			err_collector += chardisp_write_char(C_CHAR_0);
+			err_collector += chardisp_write_char(C_CHAR_4);
+			err_collector += chardisp_write_char(C_CHAR_4);
+			err_collector += chardisp_write_char(C_CHAR_1);
+			err_collector += chardisp_set_xy_position(11, 1);
+			err_collector += chardisp_write_char(C_CHAR_3);
+			err_collector += chardisp_write_char(C_CHAR_4);
+			err_collector += chardisp_write_char(C_CHAR_4);
+			err_collector += chardisp_write_char(C_CHAR_2);
+		}
+		else if(sec_tick!=0)
+		{
+			// Page already drawn and got one second tick.
+			// Go to the next page.
+			chardisp_page_step++;
+			chardisp_ani_step = 0;
+		}
+	}
+	else if(chardisp_page_step==ST_TEXT_4x20)
+	{
+		// Check if page was drawn.
+		if(chardisp_ani_step==0)
+		{
+			// Not yet.
+			chardisp_ani_step++;
+			// Draw the page.
+			err_collector += chardisp_set_xy_position(7, 0);
+			err_collector += chardisp_fill(9, CHAR_SPACE);
+			err_collector += chardisp_write_flash_string(chardisp_dsp_x20);
+			err_collector += chardisp_set_xy_position(7, 1);
+			err_collector += chardisp_fill(9, CHAR_SPACE);
+			err_collector += chardisp_write_flash_string(chardisp_dsp_x20);
+			err_collector += chardisp_set_xy_position(0, 2);
+			err_collector += chardisp_write_flash_string(chardisp_dsp_row3);
+			err_collector += chardisp_fill(10, CHAR_SPACE);
+			err_collector += chardisp_write_flash_string(chardisp_dsp_x20);
+			err_collector += chardisp_set_xy_position(0, 3);
+			err_collector += chardisp_write_flash_string(chardisp_dsp_row4_2);
+			err_collector += chardisp_fill(10, CHAR_SPACE);
+			err_collector += chardisp_write_flash_string(chardisp_dsp_x20);
+			err_collector += chardisp_set_xy_position(8, 0);
+			err_collector += chardisp_write_char(C_CHAR_0);
+			err_collector += chardisp_write_char(C_CHAR_4);
+			err_collector += chardisp_write_char(C_CHAR_4);
+			err_collector += chardisp_write_char(C_CHAR_4);
+			err_collector += chardisp_write_char(C_CHAR_4);
+			err_collector += chardisp_write_char(C_CHAR_1);
+			err_collector += chardisp_set_xy_position(7, 1);
+			err_collector += chardisp_write_char(C_CHAR_0);
+			err_collector += chardisp_write_char(C_CHAR_4);
+			err_collector += chardisp_write_char(C_CHAR_2);
+			err_collector += chardisp_write_char(CHAR_SPACE);
+			err_collector += chardisp_write_char(CHAR_SPACE);
+			err_collector += chardisp_write_char(C_CHAR_3);
+			err_collector += chardisp_write_char(C_CHAR_4);
+			err_collector += chardisp_write_char(C_CHAR_1);
+			err_collector += chardisp_set_xy_position(7, 2);
+			err_collector += chardisp_write_char(C_CHAR_3);
+			err_collector += chardisp_write_char(C_CHAR_4);
+			err_collector += chardisp_write_char(C_CHAR_1);
+			err_collector += chardisp_write_char(CHAR_SPACE);
+			err_collector += chardisp_write_char(CHAR_SPACE);
+			err_collector += chardisp_write_char(C_CHAR_0);
+			err_collector += chardisp_write_char(C_CHAR_4);
+			err_collector += chardisp_write_char(C_CHAR_2);
+			err_collector += chardisp_set_xy_position(8, 3);
+			err_collector += chardisp_write_char(C_CHAR_3);
+			err_collector += chardisp_write_char(C_CHAR_4);
+			err_collector += chardisp_write_char(C_CHAR_4);
+			err_collector += chardisp_write_char(C_CHAR_4);
+			err_collector += chardisp_write_char(C_CHAR_4);
+			err_collector += chardisp_write_char(C_CHAR_2);
+		}
+		else if(sec_tick!=0)
+		{
+			// Page already drawn and got one second tick.
+			// Go to the next page.
+			chardisp_page_step++;
+			chardisp_ani_step = 0;
+		}
+	}
+	else if(chardisp_page_step==ST_ROTATE)
+	{
+		if(chardisp_step_ani_rotate(&err_collector)==ST_ANI_DONE)
+		{
+			if(sec_tick!=0)
+			{
+				chardisp_page_step++;
+			}
+		}
+	}
+	else if(chardisp_page_step==ST_LEVELS)
 	{
 		if(chardisp_step_ani_levels(&err_collector)==ST_ANI_DONE)
 		{
@@ -502,7 +731,7 @@ uint8_t chardisp_step_animation(uint8_t sec_tick)
 	}
 	else
 	{
-		chardisp_page_step = ST_TEXT_1;
+		chardisp_page_step = ST_TEXT_1x8;
 		chardisp_ani_step = 0;
 	}
 	// Check if display was lost.

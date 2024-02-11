@@ -26,8 +26,8 @@ Pre-compile configuration file.
 #define CONFIG_H_
 
 //#define CONF_NO_DEBUG_PINS			// Disable debugging pins
-//#define CONF_EN_HD44780				// Enable support for character displays with HD44780/KS0066/สม1013ยร6/SPLC780 parallel controllers
-#define CONF_EN_I2C					// Enable support for I2C displays and expanders
+#define CONF_EN_HD44780				// Enable support for character displays with HD44780/KS0066/สม1013ยร6/SPLC780 parallel controllers
+//#define CONF_EN_I2C					// Enable support for I2C displays and expanders
 
 #ifdef CONF_EN_HD44780
 	#define CONF_EN_CHARDISP		// Enable support for character displays testing.
@@ -44,6 +44,8 @@ enum
 	I2C_SSD1306_ADR1	= 0x3C,
 	I2C_SSD1306_ADR2	= 0x3D,
 	I2C_ST7032_ADR		= 0x3E,
+	I2C_US2066_ADR1		= 0x3C,
+	I2C_US2066_ADR2		= 0x3D,
 };
 
 enum

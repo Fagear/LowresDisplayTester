@@ -1,3 +1,5 @@
+#include "config.h"
+#include "drv_cpu.h"						// Contains [F_CPU].
 #include "drv_hd44780[4bit].h"
 
 #ifdef CONF_EN_HD44780
@@ -79,14 +81,14 @@ uint8_t HD44780_init(void)
 	// Pin "E" set low.
 	HD44780CTRL_PORT &= ~HD44780_E;
 	// >40us delay.
-	_delay_us(15);
-	_delay_us(15);
-	_delay_us(15);
+	_delay_us(1);
+	HD44780DATA_PORT &= ~(HD44780_D4|HD44780_D5|HD44780_D6|HD44780_D7);
+	_delay_us(40);
 	// Set 4-bit transfer mode (4-bit) and codepage (page 1).
 	// Set 4-bit transfer mode (4-bit), 2-line display, 5x8 font.
 	error_collector += HD44780_write_byte(HD44780_CMD_FUNC|HD44780_FUNC_2LINE, HD44780_CMD);
-	// Turn display on and set no cursor, no blinking.
-	error_collector += HD44780_write_byte(HD44780_CMD_DISP|HD44780_DISP_SCREEN, HD44780_CMD);
+	// Turn display off and set no cursor, no blinking.
+	error_collector += HD44780_write_byte(HD44780_CMD_DISP, HD44780_CMD);
 	// Clear display.
 	error_collector += HD44780_write_byte(HD44780_CMD_CLR, HD44780_CMD);
 	// Set cursor shift: "right".
@@ -115,9 +117,10 @@ uint8_t HD44780_init(void)
 	{
 		return HD44780_ERR_BUSY;
 	}
+	HD44780_write_byte(HD44780_CMD_DISP|HD44780_DISP_SCREEN, HD44780_CMD);
 	// Check bus connection to the display and its RAM.
-	return HD44780_selftest();
-	//return HD44780_OK;
+	//return HD44780_selftest();
+	return HD44780_OK;
 }
 
 //-------------------------------------- Return number of selected columns.
@@ -167,9 +170,9 @@ uint8_t HD44780_rows(void)
 }
 
 //-------------------------------------- Wait for display to become ready or abort by timeout.
-uint8_t HD44780_wait_ready(void)
+uint8_t HD44780_wait_ready(uint8_t *disp_addr)
 {
-	uint8_t disp_state, cycle_cnt = HD44780_MAX_TRIES;
+	uint8_t bus_state, disp_data, cycle_cnt = HD44780_MAX_TRIES;
 	
 	// Pin "R/W" set "1" to read status.
 	HD44780CTRL_PORT &= ~HD44780_A0;
@@ -182,6 +185,7 @@ uint8_t HD44780_wait_ready(void)
 	{
 		// Set "E" pin high.
 		HD44780CTRL_PORT |= HD44780_E;
+		HD44780DATA_PORT &= ~(HD44780_D4|HD44780_D5|HD44780_D6);
 		// Enable pull-up on data bus.
 		HD44780DATA_PORT |= HD44780_D7;
 		// Set data bus as input.
@@ -190,8 +194,17 @@ uint8_t HD44780_wait_ready(void)
 		// One NOP @20 MHz = 50 ns.
 		__builtin_avr_delay_cycles(8);
 		// Check display readiness.
-		disp_state = (HD44780DATA_SRC&HD44780_D7);
-		if(disp_state!=0)
+		disp_data = 0;
+		bus_state = HD44780DATA_SRC&(HD44780_D4|HD44780_D5|HD44780_D6|HD44780_D7);
+		if((bus_state&HD44780_D7)!=0)
+			disp_data |= (1<<7);
+		if((bus_state&HD44780_D6)!=0)
+			disp_data |= (1<<6);
+		if((bus_state&HD44780_D5)!=0)
+			disp_data |= (1<<5);
+		if((bus_state&HD44780_D4)!=0)
+			disp_data |= (1<<4);
+		if((disp_data&(1<<7))!=0)
 		{
 			// Display not ready yet (or does not exist), increase counter.
 			cycle_cnt--;
@@ -210,6 +223,15 @@ uint8_t HD44780_wait_ready(void)
 		// >=450ns delay (wait E pulse width, tw>=450ns).
 		// One NOP @20 MHz = 50 ns.
 		__builtin_avr_delay_cycles(10);
+		bus_state = HD44780DATA_SRC&(HD44780_D4|HD44780_D5|HD44780_D6|HD44780_D7);
+		if((bus_state&HD44780_D7)!=0)
+			disp_data |= (1<<3);
+		if((bus_state&HD44780_D6)!=0)
+			disp_data |= (1<<2);
+		if((bus_state&HD44780_D5)!=0)
+			disp_data |= (1<<1);
+		if((bus_state&HD44780_D4)!=0)
+			disp_data |= (1<<0);
 		// Set "E" pin low.
 		HD44780CTRL_PORT &= ~HD44780_E;
 		// >=550ns delay (to complete full E cycle, tc>=1000ns).
@@ -217,7 +239,7 @@ uint8_t HD44780_wait_ready(void)
 		__builtin_avr_delay_cycles(12);
 		// Disable pull-up.
 		HD44780DATA_PORT &= ~HD44780_D7;
-		if(disp_state==0)
+		if((disp_data&(1<<7))==0)
 		{
 			// Display is ready, stop cycle.
 			break;
@@ -225,15 +247,17 @@ uint8_t HD44780_wait_ready(void)
 		// Set data bus as output.
 		HD44780DATA_DIR |= (HD44780_D4|HD44780_D5|HD44780_D6|HD44780_D7);
 		// Wait for the display to become ready.
-		_delay_us(20);
+		_delay_us(10);
 	}
 	// Disable pull-up on data bus.
 	HD44780DATA_PORT &= ~(HD44780_D4|HD44780_D5|HD44780_D6|HD44780_D7);
 	// Set data bus as output.
 	HD44780DATA_DIR |= (HD44780_D4|HD44780_D5|HD44780_D6|HD44780_D7);
 	
-	if(disp_state==0)
+	if((disp_data&(1<<7))==0)
 	{
+		// Return internal address.
+		(*disp_addr) = disp_data;
 		// Display got ready.
 		return HD44780_OK;
 	}
@@ -245,10 +269,10 @@ uint8_t HD44780_wait_ready(void)
 //-------------------------------------- Send one byte to the display.
 uint8_t HD44780_write_byte(const uint8_t send_data, const uint8_t send_mode)
 {
-	uint8_t bus_state, disp_data;
+	uint8_t bus_state, disp_data, disp_addr;
 	
 	// Check BUSY flag.
-	if(HD44780_wait_ready()==HD44780_OK)
+	if(HD44780_wait_ready(&disp_addr)==HD44780_OK)
 	{
 		// Pin "R/W" set low to write data.
 		HD44780CTRL_PORT &= ~HD44780_E;
@@ -406,10 +430,10 @@ uint8_t HD44780_write_data_byte(const uint8_t send_data)
 //-------------------------------------- Read a byte from the display.
 uint8_t HD44780_read_byte(uint8_t *read_result)
 {
-	uint8_t bus_state, disp_data = 0;
+	uint8_t bus_state, disp_addr, disp_data = 0;
 	
 	// Check BUSY flag.
-	if(HD44780_wait_ready()==HD44780_OK)
+	if(HD44780_wait_ready(&disp_addr)==HD44780_OK)
 	{
 		// Set "A0" pin high.
 		HD44780CTRL_PORT |= HD44780_A0;
@@ -486,9 +510,9 @@ uint8_t HD44780_read_byte(uint8_t *read_result)
 uint8_t HD44780_set_x_position(uint8_t x_pos)
 {
 	// Limit address to max 80 chars in line.
-	if(x_pos>0x4F)
+	if(x_pos>0x67)
 	{
-		x_pos = 0x4F;
+		x_pos = 0x67;
 	}
 	// Set DDRAM address command.
 	x_pos |= HD44780_CMD_SDDR;
@@ -538,70 +562,109 @@ uint8_t HD44780_set_xy_position(uint8_t x_pos, uint8_t y_pos)
 	return HD44780_write_byte(x_pos, HD44780_CMD);
 }
 
-//-------------------------------------- Perform display control and data connections test.
-uint8_t HD44780_selftest(void)
+//-------------------------------------- Read from DDRAM until stable results.
+// Some displays are fast (instant ready), but lag in updating DRAM anyway.
+// (US2066 OLEDs, ahem)
+uint8_t HD44780_ddram_read(uint8_t x_pos, uint8_t *read_result)
 {
-	uint8_t idx, error_collector = 0, saved_byte, check_byte;
-	// Turn display off.
-	HD44780_write_byte(HD44780_CMD_DISP, HD44780_CMD);
-	// Test DDRAM on the display and data bus as well.
-	for(idx=0;idx<8;idx++)
+	uint8_t error_collector = 0, read_tries, arr_idx;
+	uint8_t read_data[3];
+	read_tries = 8;
+	arr_idx = 0;
+	while(read_tries>0)
 	{
-		// Set DDRAM address to test symbol.
-		error_collector += HD44780_set_xy_position(idx, 0);
-		// Save symbol to variable.
-		error_collector += HD44780_read_byte(&saved_byte);
-		// Send test symbol 1.
-		error_collector += HD44780_set_xy_position(idx, 0);
-		error_collector += HD44780_write_byte(HD44780_TEST_CHAR1, HD44780_DATA);
-		// Read symbol back.
-		error_collector += HD44780_set_xy_position(idx, 0);
-		error_collector += HD44780_read_byte(&check_byte);
-		if(check_byte!=HD44780_TEST_CHAR1)
+		// Read data at position in DDRAM.
+		error_collector += HD44780_set_x_position(x_pos);
+		error_collector += HD44780_read_byte(&read_data[arr_idx]);
+		// Sliding window for last 3.
+		if(arr_idx<2)
 		{
-			return HD44780_ERR_BUS;
+			arr_idx++;
 		}
-		if(error_collector!=0)
+		else
 		{
-			return HD44780_ERR_BUSY;
+			// Check if 3 of 3 are equal.
+			if((error_collector==0)&&
+				(read_data[0]==read_data[1])&&
+				(read_data[1]==read_data[2]))
+			{
+				// Data read successfully.
+				(*read_result) = read_data[0];
+				return HD44780_OK;
+			}
+			// Slide data back.
+			read_data[0] = read_data[1];
+			read_data[1] = read_data[2];
 		}
-		// Set DDRAM address to test symbol.
-		error_collector += HD44780_set_xy_position(idx, 0);
-		// Send test symbol 2.
-		error_collector += HD44780_write_byte(HD44780_TEST_CHAR2, HD44780_DATA);
-		// Read symbol back.
-		error_collector += HD44780_set_xy_position(idx, 0);
-		error_collector += HD44780_read_byte(&check_byte);
-		if(check_byte!=HD44780_TEST_CHAR2)
-		{
-			return HD44780_ERR_BUS;
-		}
-		if(error_collector!=0)
-		{
-			return HD44780_ERR_BUSY;
-		}
-		// Restore symbol into RAM.
-		HD44780_set_xy_position(idx, 0);
-		HD44780_write_byte(saved_byte, HD44780_DATA);
+		read_tries--;
 	}
-	// Turn display on.
-	return HD44780_write_byte(HD44780_CMD_DISP|HD44780_DISP_SCREEN, HD44780_CMD);
+	if(error_collector==0)
+	{
+		return HD44780_ERR_BUS;
+	}
+	else
+	{
+		return HD44780_ERR_BUSY;
+	}
+}
+
+//-------------------------------------- Read from CGRAM until stable results.
+// Some displays are fast (instant ready), but lag in updating DRAM anyway.
+// (US2066 OLEDs, ahem)
+uint8_t HD44780_cgram_read(uint8_t char_idx, uint8_t *read_result)
+{
+	uint8_t error_collector = 0, read_tries, arr_idx;
+	uint8_t read_data[3];
+	read_tries = 8;
+	arr_idx = 0;
+	while(read_tries>0)
+	{
+		// Read data at position in CGRAM.
+		error_collector += HD44780_write_byte((HD44780_CMD_SCGR|char_idx), HD44780_CMD);
+		error_collector += HD44780_read_byte(&read_data[arr_idx]);
+		// Sliding window for last 3.
+		if(arr_idx<2)
+		{
+			arr_idx++;
+		}
+		else
+		{
+			// Check if 3 of 3 are equal.
+			if((error_collector==0)&&
+			(read_data[0]==read_data[1])&&
+			(read_data[1]==read_data[2]))
+			{
+				// Data read successfully.
+				(*read_result) = read_data[0];
+				return HD44780_OK;
+			}
+			// Slide data back.
+			read_data[0] = read_data[1];
+			read_data[1] = read_data[2];
+		}
+		read_tries--;
+	}
+	if(error_collector==0)
+	{
+		return HD44780_ERR_BUS;
+	}
+	else
+	{
+		return error_collector;
+	}
 }
 
 //-------------------------------------- Perform fast display control and data connections test.
-uint8_t HD44780_shorttest(void)
+uint8_t HD44780_selftest(void)
 {
-	uint8_t error_collector = 0, saved_byte, check_byte;
-	// Set DDRAM address to test symbol.
-	error_collector += HD44780_set_xy_position(0x27, 0);
+	uint8_t error_collector = 0, saved_char = ASCII_SPACE, saved_line, check_byte;
 	// Save symbol to variable.
-	error_collector += HD44780_read_byte(&saved_byte);
+	error_collector += HD44780_ddram_read(HD44780_TEST_ADDR, &saved_char);
 	// Send test symbol 1.
-	error_collector += HD44780_set_xy_position(0x27, 0);
+	error_collector += HD44780_set_x_position(HD44780_TEST_ADDR);
 	error_collector += HD44780_write_byte(HD44780_TEST_CHAR1, HD44780_DATA);
 	// Read symbol back.
-	error_collector += HD44780_set_xy_position(0x27, 0);
-	error_collector += HD44780_read_byte(&check_byte);
+	error_collector = HD44780_ddram_read(HD44780_TEST_ADDR, &check_byte);
 	if(check_byte!=HD44780_TEST_CHAR1)
 	{
 		return HD44780_ERR_BUS;
@@ -610,11 +673,61 @@ uint8_t HD44780_shorttest(void)
 	{
 		return HD44780_ERR_BUSY;
 	}
+	// Send test symbol 2.
+	error_collector += HD44780_set_x_position(HD44780_TEST_ADDR);
+	error_collector += HD44780_write_byte(HD44780_TEST_CHAR2, HD44780_DATA);
+	// Read symbol back.
+	error_collector = HD44780_ddram_read(HD44780_TEST_ADDR, &check_byte);
+	if(check_byte!=HD44780_TEST_CHAR2)
+	{
+		return HD44780_ERR_BUS;
+	}
+	if(error_collector!=0)
+	{
+		return HD44780_ERR_BUSY;
+	}
+	// Send symbol from custom-CG area.
+	error_collector += HD44780_set_x_position(HD44780_TEST_ADDR);
+	error_collector += HD44780_write_byte(0, HD44780_DATA);
+	// Cycle through all lines of one CG character.
+	for(uint8_t idx=0;idx<8;idx+=2)
+	{
+		// Save CG line.
+		error_collector += HD44780_cgram_read(idx, &saved_line);
+		// Re-set CGRAM address.
+		error_collector += HD44780_write_byte((HD44780_CMD_SCGR|idx), HD44780_CMD);
+		// Write test pattern.
+		error_collector += HD44780_write_byte(HD44780_TEST_CHAR1, HD44780_DATA);
+		// Read pattern back.
+		error_collector += HD44780_cgram_read(idx, &check_byte);
+		if(check_byte!=HD44780_TEST_CHAR1)
+		{
+			return HD44780_ERR_BUS;
+		}
+		if(error_collector!=0)
+		{
+			return HD44780_ERR_BUSY;
+		}
+		// Repeat with 2nd test pattern.
+		error_collector += HD44780_write_byte((HD44780_CMD_SCGR|idx), HD44780_CMD);
+		error_collector += HD44780_write_byte(HD44780_TEST_CHAR2, HD44780_DATA);
+		error_collector += HD44780_cgram_read(idx, &check_byte);
+		if(check_byte!=HD44780_TEST_CHAR2)
+		{
+			return HD44780_ERR_BUS;
+		}
+		if(error_collector!=0)
+		{
+			return HD44780_ERR_BUSY;
+		}
+		// Return CG line contents.
+		HD44780_write_byte((HD44780_CMD_SCGR|idx), HD44780_CMD);
+		HD44780_write_byte(saved_line, HD44780_DATA);
+	}
 	// Restore symbol into RAM.
-	HD44780_set_xy_position(0x27, 0);
-	HD44780_write_byte(saved_byte, HD44780_DATA);
-	
-	return 0;
+	HD44780_set_x_position(HD44780_TEST_ADDR);
+	HD44780_write_byte(saved_char, HD44780_DATA);
+	return HD44780_OK;
 }
 
 //-------------------------------------- Upload user-defined symbol.
@@ -626,8 +739,12 @@ uint8_t HD44780_upload_symbol_flash(uint8_t symbol_number, const int8_t *symbol_
 	{
 		return HD44780_ERR_DATA;
 	}
-	// "Set CGRAM address".
-	symbol_number += symbol_number*8;
+	// Mask out character selector above 7 (normally 0...7 are configurable).
+	symbol_number &= 0x07;
+	// Move DDRAM bits 3 bits left for CGRAM bits 5...3.
+	//symbol_number += symbol_number*8;
+	symbol_number = (symbol_number<<3);
+	// Add "Set CGRAM address" command bit.
 	symbol_number |= HD44780_CMD_SCGR;
 	// Send CGRAM address command.
 	err_count += HD44780_write_byte(symbol_number, HD44780_CMD);

@@ -163,7 +163,7 @@ const int8_t usr_char_lvl7[8] PROGMEM =
 	0b00010101,
 };
 
-const int8_t usr_char_lvl8[8] PROGMEM =
+const int8_t usr_char_fill[8] PROGMEM =
 {
 	0b00011111,
 	0b00011111,
@@ -728,15 +728,78 @@ const int8_t usr_char_fgr3[8] PROGMEM =
 	0b00000000,
 };
 
+const int8_t usr_char_dot[8] PROGMEM =
+{
+	0b00000000,
+	0b00000000,
+	0b00000000,
+	0b00000100,
+	0b00000100,
+	0b00000000,
+	0b00000000,
+	0b00000000,
+};
+
+const int8_t usr_char_triag1[8] PROGMEM =
+{
+	0b00000001,
+	0b00000001,
+	0b00000011,
+	0b00000011,
+	0b00000111,
+	0b00001111,
+	0b00001111,
+	0b00011111,
+};
+
+const int8_t usr_char_triag2[8] PROGMEM =
+{
+	0b00010000,
+	0b00010000,
+	0b00011000,
+	0b00011000,
+	0b00011100,
+	0b00011110,
+	0b00011110,
+	0b00011111,
+};
+
+const int8_t usr_char_triag3[8] PROGMEM =
+{
+	0b00011111,
+	0b00011110,
+	0b00011110,
+	0b00011100,
+	0b00011000,
+	0b00011000,
+	0b00010000,
+	0b00010000,
+};
+
+const int8_t usr_char_triag4[8] PROGMEM =
+{
+	0b00011111,
+	0b00001111,
+	0b00001111,
+	0b00000111,
+	0b00000011,
+	0b00000011,
+	0b00000001,
+	0b00000001,
+};
+
 const int8_t chardisp_det[] PROGMEM = "Detected";
-const int8_t chardisp_dsp_1x8[] PROGMEM = "[ R1x8 ]";
-const int8_t chardisp_dsp_x16[] PROGMEM = "x16  ]";
+const int8_t chardisp_dsp_1x8[] PROGMEM = "[Row1x8]";
+const int8_t chardisp_dsp_x16[] PROGMEM = "x16]";
 const int8_t chardisp_dsp_x20[] PROGMEM = "x20]";
 const int8_t chardisp_dsp_x24[] PROGMEM = "x24]";
 const int8_t chardisp_dsp_x40[] PROGMEM = "x40]";
-const int8_t chardisp_dsp_row2[] PROGMEM = "[row  2]";
-const int8_t chardisp_dsp_row3[] PROGMEM = "[row  3]";
-const int8_t chardisp_dsp_row4[] PROGMEM = "[row  4]";
+const int8_t chardisp_dsp_row2[] PROGMEM = "[Row  2>";
+const int8_t chardisp_dsp_row3[] PROGMEM = "[Row 3";
+const int8_t chardisp_dsp_row4[] PROGMEM = "-<Row 4>-";
+const int8_t chardisp_dsp_row1_2[] PROGMEM = "[Row 1  ";
+const int8_t chardisp_dsp_row2_2[] PROGMEM = "[Row 2 ]";
+const int8_t chardisp_dsp_row4_2[] PROGMEM = "[Row 4";
 
 #endif /* CONF_EN_CHARDISP */
 

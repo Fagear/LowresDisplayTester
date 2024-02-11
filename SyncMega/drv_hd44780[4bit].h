@@ -51,9 +51,9 @@ Service functions for buffered access start from "HD44780_buf_" instead of "HD44
 #ifndef FR_DRV_HD44780_4BIT
 #define FR_DRV_HD44780_4BIT		1
 
-#ifdef HD44780_USE_SCREEN_BUFFERS
+#ifdef CONF_EN_HD44780
 
-#include "drv_cpu.h"						// Contains [F_CPU].
+#include "config.h"
 #include "drv_io.h"
 #include <avr/io.h>
 #include <avr/pgmspace.h>
@@ -84,8 +84,9 @@ Service functions for buffered access start from "HD44780_buf_" instead of "HD44
 
 #define HD44780_MAX_COL		40				// Number of visible columns of the connected display
 #define HD44780_MAX_ROWS	4				// Number of visible rows of the connected display
-#define HD44780_TEST_CHAR1	0xA5			// Char for display RAM testing, pattern 1
-#define HD44780_TEST_CHAR2	0x5A			// Char for display RAM testing, pattern 2
+#define HD44780_TEST_CHAR1	0x5A			// Char for display RAM testing, pattern 1
+#define HD44780_TEST_CHAR2	0xA5			// Char for display RAM testing, pattern 2
+#define HD44780_TEST_ADDR	0x67			// Display RAM address for testing data bus
 
 // MSBs for writing a command.
 enum
@@ -208,14 +209,15 @@ uint8_t HD44780_setup(uint8_t disp_res, uint8_t cyr_conv);
 uint8_t HD44780_init(void);
 uint8_t HD44780_columns(void);
 uint8_t HD44780_rows(void);
-uint8_t HD44780_wait_ready(void);
+uint8_t HD44780_wait_ready(uint8_t *disp_addr);
 uint8_t HD44780_write_byte(const uint8_t send_data, const uint8_t send_mode);
 uint8_t HD44780_write_data_byte(const uint8_t send_data);
 uint8_t HD44780_read_byte(uint8_t *read_result);
 uint8_t HD44780_set_x_position(uint8_t x_pos);
 uint8_t HD44780_set_xy_position(uint8_t x_pos, uint8_t y_pos);
+uint8_t HD44780_ddram_read(uint8_t x_pos, uint8_t *read_result);
+uint8_t HD44780_cgram_read(uint8_t char_idx, uint8_t *read_result);
 uint8_t HD44780_selftest(void);
-uint8_t HD44780_shorttest(void);
 uint8_t HD44780_upload_symbol_flash(uint8_t symbol_number, const int8_t *symbol_array);
 #ifdef HD44780_USE_DIRECT_STRINGS
 	uint8_t HD44780_write_8bit_number(const uint8_t send_number, const uint8_t send_mode);
@@ -238,6 +240,6 @@ uint8_t HD44780_upload_symbol_flash(uint8_t symbol_number, const int8_t *symbol_
 	uint8_t HD44780_buf_clear_line(const uint8_t line_idx);
 #endif	// HD44780_USE_SCREEN_BUFFERS
 
-#endif /* HD44780_USE_SCREEN_BUFFERS */
+#endif /* CONF_EN_HD44780 */
 
 #endif // FR_DRV_HD44780_4BIT

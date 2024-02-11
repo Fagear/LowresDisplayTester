@@ -49,15 +49,20 @@ before animations can be stepped with [chardisp_step_animation()] function.
 
 	enum
 	{
-		ST_TEXT_0,
-		ST_TEXT_1,
-		ST_TEXT_2,
-		ST_TEXT_3,
-		ST_TEXT_4,
-		ST_TEXT_5,
-		ST_TEXT_6,
-		ST_TEXT_7,
-		ST_TEXT_8,
+		ST_TEXT_DET,
+		ST_TEXT_1x8,
+		ST_TEXT_1x16,
+		ST_TEXT_1x20,
+		ST_TEXT_1x24,
+		ST_TEXT_1x40,
+		ST_ROTATE,
+		ST_TEXT_PAUSE,
+		ST_TEXT_2x8,
+		ST_TEXT_2x16,
+		ST_TEXT_2x20,
+		ST_TEXT_2x24,
+		ST_TEXT_4x20,
+		ST_LEVELS,
 		ST_TEXT_MAX
 	};
 	
@@ -69,6 +74,9 @@ before animations can be stepped with [chardisp_step_animation()] function.
 	};
 	
 	void chardisp_set_device(void *f_upload, void *f_setpos, void *f_wr_char, void *f_wr_line);
+	void chardisp_reset_anim(void);
+	uint8_t chardisp_cycle_done(void);
+	uint8_t chardisp_fill(uint8_t count, uint8_t symbol);
 	uint8_t chardisp_step_ani_rotate(uint8_t *err_mask);
 	uint8_t chardisp_step_ani_levels(uint8_t *err_mask);
 	uint8_t chardisp_step_animation(uint8_t sec_tick);

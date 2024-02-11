@@ -575,14 +575,14 @@ int main(void)
 	
 #ifdef CONF_EN_HD44780
 	uint8_t err_mask = 0;
-	HD44780_setup(HD44780_RES_16X2, HD44780_CYR_NOCONV);
-// 	if(HD44780_init()==HD44780_OK)
-// 	{
-// 		HD44780_set_xy_position(0, 0);
-// 		HD44780_write_string("Display TEST");
-// 		HD44780_set_xy_position(0, 1);
-// 		HD44780_write_number(123, HD44780_NUMBER);
-// 	}
+	/*HD44780_setup(HD44780_RES_16X2, HD44780_CYR_NOCONV);
+	if(HD44780_init()==HD44780_OK)
+	{
+		HD44780_set_xy_position(0, 0);
+		HD44780_write_string("Display TEST");
+		HD44780_set_xy_position(0, 1);
+		HD44780_write_8bit_number(123, HD44780_NUMBER);
+	}*/
 #endif /* CONF_EN_HD44780 */
 	
 #ifdef FGR_DRV_UARTSPI_HW_FOUND
@@ -600,6 +600,8 @@ int main(void)
 #endif /* FGR_DRV_SPI_HW_FOUND */
 	SYNC_DATA = 0;
 	LACT_DATA = 0;
+	
+	tasks |= TASK_SEC_TICK;
 	
 	// Enable interrupts globally.
 	sei();
@@ -628,10 +630,10 @@ int main(void)
 				if((disp_presence&HW_DISP_44780)==0)
 				{
 					// No display found, try to re-init it.
-					HD44780_setup(HD44780_RES_16X2, HD44780_CYR_CONVERT);
 					if(HD44780_init()==HD44780_OK)
 					{
 						disp_presence |= HW_DISP_44780;
+						chardisp_reset_anim();
 					}
 					else
 					{
@@ -647,7 +649,7 @@ int main(void)
 				// Setup character display test module.
 				chardisp_set_device(HD44780_upload_symbol_flash,
 									HD44780_set_xy_position,
-									HD44780_write_byte,
+									HD44780_write_data_byte,
 									HD44780_write_flash_string);
 				// HD44780-compatible display is connected.
 				err_mask = chardisp_step_animation(tasks&TASK_SEC_TICK);
@@ -655,6 +657,16 @@ int main(void)
 				{
 					// Seems like display fell of the bus.
 					disp_presence &= ~HW_DISP_44780;
+				}
+				// Check if animation cycle has finished.
+				if(chardisp_cycle_done()==ST_ANI_DONE)
+				{
+					// Check display hardware.
+					if(HD44780_selftest()!=HD44780_OK)
+					{
+						// Seems like display fell of the bus.
+						disp_presence &= ~HW_DISP_44780;
+					}
 				}
 			}
 #endif /* CONF_EN_HD44780 */

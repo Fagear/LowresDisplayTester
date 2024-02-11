@@ -25,6 +25,7 @@ Part of the [LowresDisplayTester] project.
 #define SYNCAVR_H_
 
 #include <stdio.h>
+#include "config.h"
 #include "drv_cpu.h"
 #include "drv_io.h"
 #ifdef CONF_EN_HD44780

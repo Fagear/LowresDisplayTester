@@ -32,7 +32,6 @@ Supported MCUs:	ATmega8(-/A), ATmega16(-/A), ATmega32(-/A), ATmega48(-/A/P/AP), 
 #undef FGR_DRV_I2C_HW_FOUND
 
 #include <avr/io.h>
-#include "config.h"
 #include "drv_i2c.h"
 #include "drv_spi.h"
 
