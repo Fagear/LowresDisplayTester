@@ -35,7 +35,7 @@ Supported MCUs:	ATmega8(-/A), ATmega16(-/A), ATmega32(-/A), ATmega48(-/A/P/AP), 
 
 #include <avr/io.h>
 #include "config.h"
-#include "drv_CPU.h"				// Contains [F_CPU].
+#include "drv_hd44780[4bit].h"
 
 #undef FGR_DRV_I2C_Mxx
 #undef FGR_DRV_I2C_Mxx8
@@ -111,6 +111,7 @@ Supported MCUs:	ATmega8(-/A), ATmega16(-/A), ATmega32(-/A), ATmega48(-/A/P/AP), 
 
 enum
 {
+	I2C_STAT_MASK = 0xF8,		// Mask for status bits
 	// Misc. state codes.
 	I2C_STAT_BUS_ERR = 0x00,	// I2C bus error
 	I2C_STAT_BUSY = 0xF8,		// No relevant info, wait
@@ -149,12 +150,14 @@ enum
 	I2C_SPD_400KHZ = 400,		// Select 400 kHz clock speed for I2C bus
 };
 
-#define I2C_READ_BIT			(1<<0)		// Read flag in I2C address byte.
+#define I2C_ADDRESS_MASK		0xFE													// Mask for 7-bit I2C address
+#define I2C_READ_BIT			(1<<0)													// Read flag in I2C address byte
 
-#define I2C_GET_DATA			I2C_DATA												// Data storage
 #define I2C_INIT_MASTER			I2C_CONTROL=(1<<TWEN)|(1<<TWIE)							// Initaliaze master operation
 #define I2C_INIT_SLAVE			I2C_CONTROL=(1<<TWEN)|(1<<TWEA)|(1<<TWIE)				// Initaliaze slave operation
-#define I2C_INT_DISABLE			I2C_CONTROL=(1<<TWEN)									// Disable I2C interrupts (for use inside I2C interrupt)
+#define I2C_INT_EN				I2C_CONTROL|=(1<<TWIE)									// Enable I2C interrupts
+#define I2C_INT_DIS				I2C_CONTROL&=~(1<<TWIE)									// Disable I2C interrupts (for use inside I2C interrupt)
+#define I2C_INT_CLR				I2C_CONTROL|=(1<<TWINT)									// Clear processed I2C interrupt
 #define I2C_SW_OFF				I2C_CONTROL=(1<<TWINT)									// Switch I2C hardware off, release GPIO
 #define I2C_DO_START			I2C_CONTROL=(1<<TWINT)|(1<<TWSTA)|(1<<TWEN)|(1<<TWIE)	// MASTER: put START condition onto the bus
 #define I2C_DO_RESTART			I2C_DO_START											// MASTER: put RESTART condition onto the bus
@@ -172,19 +175,8 @@ enum
 enum
 {
 	I2C_MODE_IDLE,		// I2C waiting
-	I2C_MODE_WR_D,		// Write roller diameter to the counter
-	I2C_MODE_WR_POS,	// Write current tape position to the counter
-	I2C_MODE_WR_SPD,	// Write set speed to the counter
-	I2C_MODE_WR_FLAGS,	// Write misc. flags to the counter
-	I2C_MODE_WR_STR,	// Write a string to the counter
-	I2C_MODE_RD_MOVE_S,	// Read movement status and some flags (write command)
-	I2C_MODE_RD_MOVE_R,	// Read movement status and some flags (read data)
-	I2C_MODE_RD_D_S,	// Read diameter after counter recalibration (write command)
-	I2C_MODE_RD_D_R,	// Read diameter after counter recalibration (read data)
-	I2C_MODE_RD_POS_S,	// Read tape position (write command)
-	I2C_MODE_RD_POS_R,	// Read tape position (read data)
-	I2C_MODE_RD_SPD_S,	// Read tape real speed (write command)
-	I2C_MODE_RD_SPD_R	// Read tape real speed (read data)
+	I2C_MODE_WR,		// I2C writing to a target
+	I2C_MODE_RD,		// I2C reading from a target
 };
 
 // I2C error codes.
@@ -197,27 +189,34 @@ enum
 
 // I2C driver configuration.
 //#define I2C_ENABLE_UART_LOG			1			// Enable verbose logging
-#define I2C_MAX_SEND_LEN		4			// Maximum length (in bytes) of single data transmittion
+#define I2C_BUF_ADDR			0			// Index to store address in internal transmittion buffer
+#define I2C_MAX_SEND_LEN		15			// Maximum length (in bytes) of single data transmittion
 #define I2C_MAX_ERRORS			5			// Number of I2C transmittion failures before setting "device offline" flag
 #define I2C_MASTER_EN			1			// Enable I2C-Master functions
 //#define I2C_SLAVE_EN			1			// Enable I2C-Slave functions
 
-void I2C_set_speed(uint16_t);		// Set I2C speed with "I2C_SPD__xxxKHZ" defines
-void I2C_set_speed_100kHz();		// Set I2C clock to 100 kHz
-void I2C_set_speed_400kHz();		// Set I2C clock to 400 kHz
-void I2C_set_address(uint8_t);		// Set I2C slave address
-void I2C_set_data(uint8_t);			// Store data for transmittion
+void I2C_set_speed(uint16_t);				// Set I2C speed with "I2C_SPD__xxxKHZ" defines
+void I2C_set_speed_100kHz(void);			// Set I2C clock to 100 kHz
+void I2C_set_speed_400kHz(void);			// Set I2C clock to 400 kHz
+void I2C_set_target_address(uint8_t addr);	// Set address of I2C device to connect to
+void I2C_set_data(uint8_t cnt, uint8_t *data);	// Set data array to be send and number of bytes
+uint8_t I2C_get_len(void);						// Get length of the received data
+void I2C_get_data(uint8_t *data);				// Get received data
+void I2C_write_data(uint8_t addr, uint8_t cnt, uint8_t *data);
+void I2C_read_data(uint8_t addr, uint8_t cnt);
+
 #ifdef I2C_MASTER_EN
 	void I2C_master_processor(void);
 #endif
 #ifdef I2C_SLAVE_EN
+	void I2C_set_slave_address(uint8_t);	// Set I2C slave address
 	void I2C_slave_processor(void);
 #endif
 
 inline void I2C_init_HW(void)
 {
 	// Init pins.
-	I2C_PORT &= ~(I2C_SCL|I2C_SDA);
+	I2C_PORT |= (I2C_SCL|I2C_SDA);
 	I2C_DIR |= (I2C_SCL|I2C_SDA);
 }
 #endif /* FGR_DRV_I2C_HW_FOUND */

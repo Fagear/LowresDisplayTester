@@ -86,6 +86,7 @@ enum
 {
 	TASK_UPDATE_ASYNC = (1<<0),
 	TASK_SEC_TICK = (1<<1),
+	TASK_I2C = (1<<2),
 };
 
 void system_startup(void);

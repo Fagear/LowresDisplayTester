@@ -6,7 +6,7 @@
 
 uint8_t disp_resolution = HD44780_RES_8X1,
 	disp_cyr = HD44780_CYR_NOCONV;
-	
+
 #ifdef HD44780_USE_SCREEN_BUFFERS
 uint8_t disp_shift_stage,
 	disp_coord_x,
@@ -173,7 +173,7 @@ uint8_t HD44780_rows(void)
 uint8_t HD44780_wait_ready(uint8_t *disp_addr)
 {
 	uint8_t bus_state, disp_data, cycle_cnt = HD44780_MAX_TRIES;
-	
+
 	// Pin "R/W" set "1" to read status.
 	HD44780CTRL_PORT &= ~HD44780_A0;
 	HD44780CTRL_PORT |= HD44780_RW;
@@ -253,7 +253,7 @@ uint8_t HD44780_wait_ready(uint8_t *disp_addr)
 	HD44780DATA_PORT &= ~(HD44780_D4|HD44780_D5|HD44780_D6|HD44780_D7);
 	// Set data bus as output.
 	HD44780DATA_DIR |= (HD44780_D4|HD44780_D5|HD44780_D6|HD44780_D7);
-	
+
 	if((disp_data&(1<<7))==0)
 	{
 		// Return internal address.
@@ -270,7 +270,7 @@ uint8_t HD44780_wait_ready(uint8_t *disp_addr)
 uint8_t HD44780_write_byte(const uint8_t send_data, const uint8_t send_mode)
 {
 	uint8_t bus_state, disp_data, disp_addr;
-	
+
 	// Check BUSY flag.
 	if(HD44780_wait_ready(&disp_addr)==HD44780_OK)
 	{
@@ -294,7 +294,7 @@ uint8_t HD44780_write_byte(const uint8_t send_data, const uint8_t send_mode)
 			{
 				// Draw a digit, but if it's zero - draw a space.
 				if(disp_data==0)
-				{	
+				{
 					// Draw ASCII space char in place of zero.
 					disp_data = ASCII_SPACE;
 				}
@@ -320,6 +320,24 @@ uint8_t HD44780_write_byte(const uint8_t send_data, const uint8_t send_mode)
 				{
 					// It's not a single digit! Draw a hash.
 					disp_data = ASCII_OVF;
+				}
+				else
+				{
+					// Convert from digit binary to ASCII code for the digit.
+					disp_data = disp_data+ASCII_ZERO;
+				}
+			}
+			else if(send_mode==HD44780_HEX_DIGIT)
+			{
+				if(disp_data>=0x10)
+				{
+					// It's not a single digit! Draw a hash.
+					disp_data = ASCII_OVF;
+				}
+				else if(disp_data>9)
+				{
+					// Shift value to ASCII 'A'...'F' symbol.
+					disp_data = disp_data+0x37;
 				}
 				else
 				{
@@ -431,7 +449,7 @@ uint8_t HD44780_write_data_byte(const uint8_t send_data)
 uint8_t HD44780_read_byte(uint8_t *read_result)
 {
 	uint8_t bus_state, disp_addr, disp_data = 0;
-	
+
 	// Check BUSY flag.
 	if(HD44780_wait_ready(&disp_addr)==HD44780_OK)
 	{
@@ -797,6 +815,11 @@ uint8_t HD44780_write_8bit_number(const uint8_t send_number, const uint8_t send_
 			err_count += HD44780_write_byte(send_number%10, HD44780_DIGIT);
 		}
 	}
+	else if(send_mode==HD44780_NUMBER_HEX)
+	{
+		err_count += HD44780_write_byte(send_number/0x10, HD44780_HEX_DIGIT);
+		err_count += HD44780_write_byte(send_number%0x10, HD44780_HEX_DIGIT);
+	}
 	// Check for errors.
 	if(err_count==0)
 		return HD44780_OK;
@@ -805,7 +828,7 @@ uint8_t HD44780_write_8bit_number(const uint8_t send_number, const uint8_t send_
 }
 
 //-------------------------------------- Write ASCII string from RAM on display.
-uint8_t HD44780_write_string(const int8_t *str_output)
+uint8_t HD44780_write_string(const uint8_t *str_output)
 {
 	uint8_t send_char, char_cnt, disp_status = HD44780_OK;
 	// Keep first char.
@@ -1085,6 +1108,34 @@ uint8_t HD44780_buf_write_byte(const uint8_t send_data, const uint8_t send_mode)
 			disp_data = send_data+ASCII_ZERO;
 		}
 	}
+	else if(send_mode==HD44780_HEX_DIGIT)
+	{
+		if(send_data>=0x10)
+		{
+			// It's not a single digit! Draw a hash.
+			disp_data = ASCII_OVF;
+		}
+		else if(send_data>9)
+		{
+			// Shift value to ASCII 'A'...'F' symbol.
+			disp_data = send_data+0x37;
+		}
+		else
+		{
+			// Convert from digit binary to ASCII code for the digit.
+			disp_data = send_data+ASCII_ZERO;
+		}
+	}
+#ifdef HD44780_RU_REENCODE
+	else if(disp_cyr!=HD44780_CYR_NOCONV)
+	{
+		// Need to convert CP1251 Cyrillic character for non-CP1251 Cyrillic display.
+		if(send_data>=0xA0)
+		{
+			disp_data = pgm_read_byte_near(hd44780_cyr_conv_tbl+send_data);
+		}
+	}
+#endif /* HD44780_RU_REENCODE */
 	else if(send_mode==HD44780_DATA)
 	{
 		// Draw a raw ASCII char.
@@ -1142,6 +1193,11 @@ uint8_t HD44780_buf_write_8bit_number(const uint8_t send_number, const uint8_t s
 			HD44780_buf_write_byte(send_number%10, HD44780_DIGIT);
 		}
 	}
+	else if(send_mode==HD44780_NUMBER_HEX)
+	{
+		HD44780_buf_write_byte(send_number/0x10, HD44780_HEX_DIGIT);
+		HD44780_buf_write_byte(send_number%0x10, HD44780_HEX_DIGIT);
+	}
 	else
 	{
 		return HD44780_ERR_DATA;
@@ -1150,7 +1206,7 @@ uint8_t HD44780_buf_write_8bit_number(const uint8_t send_number, const uint8_t s
 }
 
 //-------------------------------------- Write ASCII string from RAM to display buffer.
-uint8_t HD44780_buf_write_string(const int8_t *str_output)
+uint8_t HD44780_buf_write_string(const uint8_t *str_output)
 {
 	uint8_t send_char, char_cnt;
 	// Keep first char.

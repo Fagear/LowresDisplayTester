@@ -179,8 +179,10 @@ enum
 	HD44780_DATA,			// Send a raw symbol to the display
 	HD44780_DIGIT,			// Send a digit to the display (convert to char)
 	HD44780_NONZERO_DIGIT,	// Send a digit to the display (convert to char, zeros to spaces)
+	HD44780_HEX_DIGIT,		// Send a hex-digit to the display (convert to char)
 	HD44780_NUMBER,			// Send a number to the display (convert to chars)
 	HD44780_NUMBER_SPACES,	// Send a number to the display (convert to chars, no leading zeros)
+	HD44780_NUMBER_HEX,		// Send a number to the display (convert to HEX)
 };
 
 // Special ASCII codes.
@@ -227,7 +229,7 @@ uint8_t HD44780_selftest(void);
 uint8_t HD44780_upload_symbol_flash(uint8_t symbol_number, const int8_t *symbol_array);
 #ifdef HD44780_USE_DIRECT_STRINGS
 	uint8_t HD44780_write_8bit_number(const uint8_t send_number, const uint8_t send_mode);
-	uint8_t HD44780_write_string(const int8_t *str_output);
+	uint8_t HD44780_write_string(const uint8_t *str_output);
 	uint8_t HD44780_write_flash_string(const int8_t *str_output);
 	uint8_t HD44780_clear_line(const uint8_t line_idx);
 #endif	// HD44780_USE_DIRECT_STRINGS
@@ -241,7 +243,7 @@ uint8_t HD44780_upload_symbol_flash(uint8_t symbol_number, const int8_t *symbol_
 	uint8_t HD44780_buf_set_position(const uint8_t x_pos, const uint8_t y_pos);
 	uint8_t HD44780_buf_write_byte(const uint8_t, const uint8_t);
 	uint8_t HD44780_buf_write_8bit_number(const uint8_t, const uint8_t);
-	uint8_t HD44780_buf_write_string(const int8_t *str_output);
+	uint8_t HD44780_buf_write_string(const uint8_t *str_output);
 	uint8_t HD44780_buf_write_flash_string(const int8_t *str_output);
 	uint8_t HD44780_buf_clear_line(const uint8_t line_idx);
 #endif	// HD44780_USE_SCREEN_BUFFERS

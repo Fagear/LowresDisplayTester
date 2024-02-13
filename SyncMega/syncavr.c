@@ -440,6 +440,15 @@ ISR(SPI_INT)
 }
 #endif /* FGR_DRV_SPI_HW_FOUND */
 
+#ifdef FGR_DRV_I2C_HW_FOUND
+ISR(I2C_INT)
+{
+	I2C_INT_DIS;
+	tasks |= TASK_I2C;
+	HD44780_write_string("INT|");
+}
+#endif /* FGR_DRV_I2C_HW_FOUND */
+
 //-------------------------------------- Startup init.
 inline void system_startup(void)
 {
@@ -590,14 +599,13 @@ int main(void)
 	
 #ifdef CONF_EN_HD44780
 	uint8_t err_mask = 0;
-	/*HD44780_setup(HD44780_RES_16X2, HD44780_CYR_NOCONV);
+	//HD44780_setup(HD44780_RES_16X2, HD44780_CYR_NOCONV);
 	if(HD44780_init()==HD44780_OK)
 	{
+		disp_presence |= HW_DISP_44780;
 		HD44780_set_xy_position(0, 0);
-		HD44780_write_string("Display TEST");
-		HD44780_set_xy_position(0, 1);
-		HD44780_write_8bit_number(123, HD44780_NUMBER);
-	}*/
+		HD44780_write_string("Display TEST|");
+	}
 #endif /* CONF_EN_HD44780 */
 	
 	tasks |= TASK_SEC_TICK;
@@ -640,14 +648,19 @@ int main(void)
 					}
 				}
 #endif /* CONF_EN_HD44780 */
+				if((kbd_state&SW_VID_SYS0)!=0)
+				{
+					
+					I2C_write_data(I2C_PCF8574_START, 0, NULL);
+					tasks |= TASK_I2C;
+				}
 			}
-			I2C_master_processor();
 #ifdef CONF_EN_HD44780
 			// Check if HD44780-compatible display is detected.
 			if((disp_presence&HW_DISP_44780)!=0)
 			{
 				// Setup character display test module.
-				chardisp_set_device(HD44780_upload_symbol_flash,
+				/*chardisp_set_device(HD44780_upload_symbol_flash,
 									HD44780_set_xy_position,
 									HD44780_write_data_byte,
 									HD44780_write_flash_string);
@@ -667,12 +680,17 @@ int main(void)
 						// Seems like display fell of the bus.
 						disp_presence &= ~HW_DISP_44780;
 					}
-				}
+				}*/
 			}
 #endif /* CONF_EN_HD44780 */
 			// Clear processed tasks.
 			tasks &= ~TASK_SEC_TICK;
 			DBG_4_OFF;
+		}
+		if((tasks&TASK_I2C)!=0)
+		{
+			tasks &= ~TASK_I2C;
+			I2C_master_processor();
 		}
 	}
 
