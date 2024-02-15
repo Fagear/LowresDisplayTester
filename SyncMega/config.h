@@ -33,12 +33,17 @@ Pre-compile configuration file.
 	#define CONF_EN_CHARDISP		// Enable support for character displays testing.
 #endif /* CONF_EN_HD44780 */
 
+#define UART_IN_LEN			8			// UART receiving buffer length.
+#define UART_OUT_LEN		512U		// UART transmitting buffer length.
+
 // I2C devices.
 enum
 {
-	US2066,
+	I2C_GEN_CALL		= 0x00,		// General call
 	I2C_PCF8574_START	= 0x20,		// Used on I2C - HD44780 "backpacks"
 	I2C_PCF8574_END		= 0x27,		// Used on I2C - HD44780 "backpacks"
+	I2C_PCF8574A_START	= 0x70,		// Used on I2C - HD44780 "backpacks"
+	I2C_PCF8574A_END	= 0x77,		// Used on I2C - HD44780 "backpacks"
 	I2C_HT16K33_START	= 0x70,
 	I2C_HT16K33_END		= 0x77,
 	I2C_SSD1306_ADR1	= 0x3C,		// Used on OLED graphic ~1" displays

@@ -441,11 +441,13 @@ ISR(SPI_INT)
 #endif /* FGR_DRV_SPI_HW_FOUND */
 
 #ifdef FGR_DRV_I2C_HW_FOUND
-ISR(I2C_INT)
+ISR(I2C_INT, ISR_NAKED)
 {
+	INTR_IN;
 	I2C_INT_DIS;
 	tasks |= TASK_I2C;
-	HD44780_write_string("INT|");
+	//HD44780_write_string((uint8_t *)"INT|");
+	INTR_OUT;
 }
 #endif /* FGR_DRV_I2C_HW_FOUND */
 
@@ -474,9 +476,9 @@ inline void system_startup(void)
 	LACT_DATA = 0;
 	
 #ifdef FGR_DRV_UARTSPI_HW_FOUND
-	UART_SPI_CONFIG_M0;
-	UART_SPI_set_target_clock(BAR_FREQ_500Hz);
-	UART_SPI_START;
+	//UART_SPI_CONFIG_M0;
+	//UART_SPI_set_target_clock(BAR_FREQ_500Hz);
+	//UART_SPI_START;
 #endif /* FGR_DRV_UARTSPI_HW_FOUND */
 #ifdef FGR_DRV_SPI_HW_FOUND
 	SPI_CONFIG_MSTR_M0;
@@ -591,6 +593,7 @@ int main(void)
 
 	uint8_t div_sec = 0;
 	uint8_t seconds_top = FPS_COMP525;
+	uint8_t i2c_addr = 0;
 	
 	//dbg_index = 1;
 	//dbg_index = 305;
@@ -604,7 +607,7 @@ int main(void)
 	{
 		disp_presence |= HW_DISP_44780;
 		HD44780_set_xy_position(0, 0);
-		HD44780_write_string("Display TEST|");
+		HD44780_write_string((uint8_t *)"Display TEST|");
 	}
 #endif /* CONF_EN_HD44780 */
 	
@@ -650,8 +653,8 @@ int main(void)
 #endif /* CONF_EN_HD44780 */
 				if((kbd_state&SW_VID_SYS0)!=0)
 				{
-					
-					I2C_write_data(I2C_PCF8574_START, 0, NULL);
+					HD44780_set_xy_position(0, 0);
+					I2C_write_data(i2c_addr, 0, NULL);
 					tasks |= TASK_I2C;
 				}
 			}
@@ -691,9 +694,13 @@ int main(void)
 		{
 			tasks &= ~TASK_I2C;
 			I2C_master_processor();
+			if((I2C_get_error()==I2C_ERR_M_ADR_NACK)||(I2C_get_error()==I2C_ERR_NO_DONE))
+			{
+				HD44780_write_8bit_number(I2C_get_error(), HD44780_NUMBER_HEX);
+				i2c_addr++;
+			}
 		}
 	}
 
 	return 0;
 }
-

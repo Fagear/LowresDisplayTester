@@ -828,7 +828,7 @@ uint8_t HD44780_write_8bit_number(const uint8_t send_number, const uint8_t send_
 }
 
 //-------------------------------------- Write ASCII string from RAM on display.
-uint8_t HD44780_write_string(const uint8_t *str_output)
+uint8_t HD44780_write_string(uint8_t *str_output)
 {
 	uint8_t send_char, char_cnt, disp_status = HD44780_OK;
 	// Keep first char.
@@ -1206,7 +1206,7 @@ uint8_t HD44780_buf_write_8bit_number(const uint8_t send_number, const uint8_t s
 }
 
 //-------------------------------------- Write ASCII string from RAM to display buffer.
-uint8_t HD44780_buf_write_string(const uint8_t *str_output)
+uint8_t HD44780_buf_write_string(uint8_t *str_output)
 {
 	uint8_t send_char, char_cnt;
 	// Keep first char.

@@ -34,6 +34,7 @@ Supported MCUs:	ATmega8(-/A), ATmega16(-/A), ATmega32(-/A), ATmega48(-/A/P/AP), 
 #include <avr/io.h>
 #include "drv_i2c.h"
 #include "drv_spi.h"
+#include "drv_uart.h"
 
 #ifdef CONF_EN_HD44780
 	

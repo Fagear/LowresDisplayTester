@@ -155,8 +155,7 @@ enum
 
 #define I2C_INIT_MASTER			I2C_CONTROL=(1<<TWEN)|(1<<TWIE)							// Initaliaze master operation
 #define I2C_INIT_SLAVE			I2C_CONTROL=(1<<TWEN)|(1<<TWEA)|(1<<TWIE)				// Initaliaze slave operation
-#define I2C_INT_EN				I2C_CONTROL|=(1<<TWIE)									// Enable I2C interrupts
-#define I2C_INT_DIS				I2C_CONTROL&=~(1<<TWIE)									// Disable I2C interrupts (for use inside I2C interrupt)
+#define I2C_INT_DIS				I2C_CONTROL=(1<<TWEN)									// Disable I2C interrupts (for use inside I2C interrupt)
 #define I2C_INT_CLR				I2C_CONTROL|=(1<<TWINT)									// Clear processed I2C interrupt
 #define I2C_SW_OFF				I2C_CONTROL=(1<<TWINT)									// Switch I2C hardware off, release GPIO
 #define I2C_DO_START			I2C_CONTROL=(1<<TWINT)|(1<<TWSTA)|(1<<TWEN)|(1<<TWIE)	// MASTER: put START condition onto the bus
@@ -182,9 +181,11 @@ enum
 // I2C error codes.
 enum
 {
-	I2C_ERR_NO,			// No error
-	I2C_ERR_LOST_ARB,	// I2C bus error or lost arbitration
-	I2C_ERR_M_NACK,		// I2C-M got NACK while sending
+	I2C_ERR_NO,								// No error
+	I2C_ERR_NO_DONE,						// No error, transmittion is finished
+	I2C_ERR_LOST_ARB,						// I2C bus error or lost arbitration
+	I2C_ERR_M_ADR_NACK,						// I2C-M got NACK while sending address
+	I2C_ERR_M_DATA_NACK,					// I2C-M got NACK while sending data
 };
 
 // I2C driver configuration.
@@ -202,6 +203,7 @@ void I2C_set_target_address(uint8_t addr);	// Set address of I2C device to conne
 void I2C_set_data(uint8_t cnt, uint8_t *data);	// Set data array to be send and number of bytes
 uint8_t I2C_get_len(void);						// Get length of the received data
 void I2C_get_data(uint8_t *data);				// Get received data
+uint8_t I2C_get_error(void);					// Get last error
 void I2C_write_data(uint8_t addr, uint8_t cnt, uint8_t *data);
 void I2C_read_data(uint8_t addr, uint8_t cnt);
 
