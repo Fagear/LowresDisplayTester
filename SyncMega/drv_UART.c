@@ -1,6 +1,8 @@
 #include "drv_uart.h"
 #include <stdio.h>
 
+#ifdef FGR_DRV_UART_HW_FOUND
+
 static volatile uint16_t p_send=0;		// Points to first symbol for transmitting to UART (TX).
 static volatile uint16_t p_write=0;		// Points to next free cell inside TX buffer.
 static volatile uint16_t p_receive=0;	// Points to next free cell inside RX buffer from UART.
@@ -21,41 +23,11 @@ void UART_enable(void)
 {
 	// Enable double speed (for more precise speed setting).
 	UART_CONF1_REG=UART_DBL_SPEED;
-	// Enable receiver and transmitter, interrupt on TX and RX complete.
-	UART_CONF2_REG=UART_RX_EN|UART_TX_EN;
+	// Enable receiver and transmitter.
+	UART_TX_EN;
+	UART_RX_EN;
 	// Set frame format (async, no parity, 1 stop bit, 8 data bits).
 	UART_MODE_8N1;
-}
-
-//-------------------------------------- UART disable.
-void UART_disable(void)
-{
-	// Disable receiver and transmitter, interrupt on TX and RX complete.
-	UART_CONF2_REG&=~(UART_RX_EN|UART_TX_EN|UART_RX_INT_EN|UART_TX_INT_EN);
-}
-
-//-------------------------------------- Enable interrupt on successful transmit.
-void UART_TXint_enable(void)
-{
-	UART_CONF2_REG|=UART_TX_INT_EN;
-}
-
-//-------------------------------------- Enable interrupt on successful receive.
-void UART_RXint_enable(void)
-{
-	UART_CONF2_REG|=UART_RX_INT_EN;
-}
-
-//-------------------------------------- Disable interrupt on successful transmit.
-void UART_TXint_disable(void)
-{
-	UART_CONF2_REG&=~UART_TX_INT_EN;
-}
-
-//-------------------------------------- Disable interrupt on successful receive.
-void UART_RXint_disable(void)
-{
-	UART_CONF2_REG&=~UART_RX_INT_EN;
 }
 
 //-------------------------------------- Add string to output buffer.
@@ -260,3 +232,5 @@ void UART_dump_out(void)
 		wdt_reset();
 	}
 }
+
+#endif /* FGR_DRV_UART_HW_FOUND */

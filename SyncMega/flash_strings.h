@@ -488,18 +488,6 @@ const int8_t usr_char_load15[8] PROGMEM =
 	0b00001111,
 };
 
-const int8_t usr_char_load16[8] PROGMEM =
-{
-	0b00000000,
-	0b00000000,
-	0b00000000,
-	0b00000000,
-	0b00000000,
-	0b00000000,
-	0b00000000,
-	0b00011111,
-};
-
 const int8_t usr_char_load17[8] PROGMEM =
 {
 	0b00000000,

@@ -33,6 +33,11 @@ before animations can be stepped with [chardisp_step_animation()] function.
 #include <stdio.h>
 #include "config.h"
 #ifdef CONF_EN_CHARDISP
+	// Limit number of animations for low-ROM devices
+	#if FLASHEND>0x4000
+		#define CHARDISP_FULL
+	#endif
+	
 	// Custom character indexes.
 	enum
 	{
@@ -56,14 +61,18 @@ before animations can be stepped with [chardisp_step_animation()] function.
 		ST_TEXT_1x20,
 		ST_TEXT_1x24,
 		ST_TEXT_1x40,
+#ifdef CHARDISP_FULL
 		ST_ROTATE,			// Display rotating animation on 8x1 brackets
+#endif /* CHARDISP_FULL */
 		ST_TEXT_PAUSE,
 		ST_TEXT_2x8,
 		ST_TEXT_2x16,
 		ST_TEXT_2x20,
 		ST_TEXT_2x24,
 		ST_TEXT_4x20,
+#ifdef CHARDISP_FULL
 		ST_LEVELS,			// Fill screen with bar graphs
+#endif /* CHARDISP_FULL */
 		ST_SPIRAL,			// Draw circle and spiral animations
 		ST_FADEOUT,			// Draw top to bottom fadeout animation
 		ST_CP_FILL,			// Print all symbols from codepage
@@ -84,8 +93,10 @@ before animations can be stepped with [chardisp_step_animation()] function.
 	uint8_t chardisp_cycle_done(void);
 	uint8_t chardisp_fill(uint8_t count, uint8_t symbol);
 	uint8_t chardisp_clear(void);
+#ifdef CHARDISP_FULL
 	uint8_t chardisp_step_ani_rotate(uint8_t *err_mask);
 	uint8_t chardisp_step_ani_levels(uint8_t *err_mask);
+#endif /* CHARDISP_FULL */
 	uint8_t chardisp_step_ani_spiral(uint8_t *err_mask);
 	uint8_t chardisp_step_ani_fade(uint8_t *err_mask);
 	uint8_t chardisp_step_ani_cp_fill(uint8_t *err_mask);

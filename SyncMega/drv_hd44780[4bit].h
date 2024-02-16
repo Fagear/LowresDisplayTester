@@ -51,13 +51,13 @@ Service functions for buffered access start from "HD44780_buf_" instead of "HD44
 #ifndef FR_DRV_HD44780_4BIT
 #define FR_DRV_HD44780_4BIT		1
 
-#ifdef CONF_EN_HD44780
-
 #include "config.h"
 #include "drv_io.h"
 #include <avr/io.h>
 #include <avr/pgmspace.h>
 #include <util/delay.h>
+
+#ifdef CONF_EN_HD44780
 
 #define HD44780_USE_DIRECT_STRINGS			// Turn on direct writing to the display
 //#define HD44780_USE_SCREEN_BUFFERS			// Turn on paged buffer

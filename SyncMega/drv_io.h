@@ -27,18 +27,12 @@ Supported MCUs:	ATmega8(-/A), ATmega16(-/A), ATmega32(-/A), ATmega48(-/A/P/AP), 
 #ifndef FGR_DRV_IO_H_
 #define FGR_DRV_IO_H_
 
+#undef FGR_DRV_UART_HW_FOUND
 #undef FGR_DRV_SPI_HW_FOUND
 #undef FGR_DRV_UARTSPI_HW_FOUND
 #undef FGR_DRV_I2C_HW_FOUND
 
 #include <avr/io.h>
-#include "drv_i2c.h"
-#include "drv_spi.h"
-#include "drv_uart.h"
-
-#ifdef CONF_EN_HD44780
-	
-#endif /* CONF_EN_HD44780 */
 
 #if SIGNATURE_1 == 0x92
 	#if SIGNATURE_2 == 0x05			// ATmega48, ATmega48A
@@ -80,14 +74,31 @@ Supported MCUs:	ATmega8(-/A), ATmega16(-/A), ATmega32(-/A), ATmega48(-/A/P/AP), 
 	#error Not supported MCU (by SIGNATURE_1)!
 #endif /* SIGNATURE_1 */
 
-#ifndef FGR_DRV_SPI_HW_FOUND
-	#ifndef FGR_DRV_UARTSPI_HW_FOUND
-		#warning SPI driver not found!
+#include "drv_spi.h"
+#ifdef CONF_EN_I2C
+	#include "drv_i2c.h"
+#endif /* CONF_EN_I2C */
+#ifdef CONF_EN_UART
+	#include "drv_uart.h"
+#endif /* CONF_EN_UART */
+
+//avr-gcc includes are broken...
+/*#ifdef CONF_EN_UART
+	#ifndef FGR_DRV_UART_HW_FOUND
+		#warning UART driver not found!
 	#endif
 #endif
 
-#ifndef FGR_DRV_I2C_HW_FOUND
-	#warning I2C driver not found!
+#ifdef FGR_DRV_SPI_HW_FOUND
+	#ifndef FGR_DRV_UARTSPI_HW_FOUND
+		#warning SPI-through-UART driver not found!
+	#endif
 #endif
+
+#ifdef CONF_EN_I2C
+	#ifndef FGR_DRV_I2C_HW_FOUND
+		#warning I2C driver not found!
+	#endif
+#endif*/
 
 #endif /* FGR_DRV_IO_H_ */

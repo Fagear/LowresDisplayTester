@@ -4,23 +4,24 @@ volatile uint8_t tasks = 0;							// System tasks.
 uint8_t usr_video = MODE_COMP_525i;					// Video system value set by user.
 uint8_t usr_act_delay = COMP_ACT_DELAY_525i;		// Line active part start delay from H-sync for user-selected video system.
 uint8_t usr_act_time = COMP_ACT_LEN_525i;			// Line active part duration for user-selected video system.
-uint8_t disp_presence = 0;							// Flags for detected displays types
+uint8_t disp_presence = 0;							// Flags for detected displays types.
+uint8_t i2c_40_range = 0;							// Flags for I2C devices in 0x40...0x4E range.
+uint8_t i2c_70_range = 0;							// Flags for I2C devices in 0x70...0x7E range.
+uint8_t i2c_E0_range = 0;							// Flags for I2C devices in 0xE0...0xEE range.
 uint8_t active_region = 0;							// Flags for lines in active region.
-uint8_t act_delay = COMP_ACT_DELAY_525i;	// Line active part start delay from H-sync (for clearing interrupt from IFs).
-//volatile uint8_t act_time = COMP_ACT_LEN_525i;		// Line active part duration (for clearing interrupt from IFs).
+uint8_t act_delay = COMP_ACT_DELAY_525i;			// Line active part start delay from H-sync (for clearing interrupt from IFs).
 uint16_t sync_step_cnt = 0;							// Current step in sync generator logic.
-uint16_t sync_step_limit = 0;				// Maximum step number for selected video system.
+uint16_t sync_step_limit = 0;						// Maximum step number for selected video system.
 uint16_t frame_line_cnt = 0;						// Number of current line in the frame.
 uint8_t video_sys = MODE_COMP_625i;					// Video system value, used in interrupt (buffered).
 uint8_t kbd_state = 0;								// Buttons states from the last [keys_simple_scan()] poll.
 uint8_t kbd_pressed = 0;							// Flags for buttons that have been pressed (should be cleared after processing).
 uint8_t kbd_released = 0;							// Flags for buttons that have been released (should be cleared after processing).
 volatile uint8_t comp_data_idx = 0;					// Index for vertical bar groups.
-uint16_t dbg_index = 0;
 
 volatile const uint8_t ucaf_compile_date[] PROGMEM = __DATE__;		// Date of compilation
 volatile const uint8_t ucaf_compile_time[] PROGMEM = __TIME__;		// Time of compilation
-volatile const uint8_t ucaf_version[] PROGMEM = "v0.06";			// Firmware version
+volatile const uint8_t ucaf_version[] PROGMEM = "v0.07";			// Firmware version
 volatile const uint8_t ucaf_author[] PROGMEM = "Maksim Kryukov aka Fagear (fagear@mail.ru)";	// Author
 volatile const uint8_t ucaf_info[] PROGMEM = "ATmega sync gen/display tester";					// Firmware description
 
@@ -344,7 +345,6 @@ ISR(INT0_INT)
 		// Apply delay for the active part for the H-sync.
 		act_delay = usr_act_delay;
 		// Apply length of the active part of the line.
-		//act_time = usr_act_time;
 		LACT_PULSE_DUR = usr_act_time;
 #endif
 		DBG_1_OFF;
@@ -451,6 +451,26 @@ ISR(I2C_INT, ISR_NAKED)
 }
 #endif /* FGR_DRV_I2C_HW_FOUND */
 
+#ifdef FGR_DRV_UART_HW_FOUND
+ISR(UART_RX_INT, ISR_NAKED)
+{
+	//INTR_UART_IN;
+	INTR_IN;
+	tasks |= TASK_UART_RX;
+	INTR_OUT;
+	//INTR_UART_OUT;
+}
+
+ISR(UART_TX_INT, ISR_NAKED)
+{
+	//INTR_UART_IN;
+	INTR_IN;
+	tasks |= TASK_UART_TX;
+	INTR_OUT;
+	//INTR_UART_OUT;
+}
+#endif /* FGR_DRV_UART_HW_FOUND */
+
 //-------------------------------------- Startup init.
 inline void system_startup(void)
 {
@@ -473,8 +493,14 @@ inline void system_startup(void)
 	SYNC_STEP_DUR = COMP_HALF_LEN_525i;			// Load duration of the H-cycle.
 	SYNC_PULSE_DUR = COMP_SYNC_V_LEN_525i;		// Load duration of the H-pulse.
 	SYNC_DATA = 0;
+#ifdef FGR_DRV_IO_T0OC_HW_FOUND
 	LACT_DATA = 0;
-	
+#endif /* FGR_DRV_IO_T0OC_HW_FOUND */
+#ifdef FGR_DRV_UART_HW_FOUND
+	UART_enable();
+	UART_set_speed(UART_BAUD_9600);
+	UART_TX_INT_EN; UART_RX_INT_EN;
+#endif /* FGR_DRV_UART_HW_FOUND */
 #ifdef FGR_DRV_UARTSPI_HW_FOUND
 	//UART_SPI_CONFIG_M0;
 	//UART_SPI_set_target_clock(BAR_FREQ_500Hz);
@@ -488,6 +514,10 @@ inline void system_startup(void)
 	SPI_STATUS = (1<<SPI2X);
 	SPI_START; SPI_INT_EN;
 #endif /* FGR_DRV_SPI_HW_FOUND */
+#ifdef FGR_DRV_I2C_HW_FOUND
+	I2C_set_speed_100kHz();
+	I2C_INIT_MASTER;
+#endif /* FGR_DRV_I2C_HW_FOUND */
 }
 
 //-------------------------------------- Keyboard scan routine.
@@ -592,16 +622,16 @@ int main(void)
 	system_startup();
 
 	uint8_t div_sec = 0;
+	uint8_t tasks_buf = 0;
 	uint8_t seconds_top = FPS_COMP525;
-	uint8_t i2c_addr = 0;
+	uint8_t i2c_addr = 0x02;
 	
 	//dbg_index = 1;
 	//dbg_index = 305;
 	//dbg_index = 315;
-	dbg_index = 620;
+	//dbg_index = 620;
 	
 #ifdef CONF_EN_HD44780
-	uint8_t err_mask = 0;
 	//HD44780_setup(HD44780_RES_16X2, HD44780_CYR_NOCONV);
 	if(HD44780_init()==HD44780_OK)
 	{
@@ -611,16 +641,15 @@ int main(void)
 	}
 #endif /* CONF_EN_HD44780 */
 	
-	tasks |= TASK_SEC_TICK;
-	
 	// Enable interrupts globally.
 	sei();
 	// Main cycle.
 	while(1)
 	{
-		if((tasks&TASK_UPDATE_ASYNC)!=0)
+		tasks_buf |= tasks;
+		if((tasks_buf&TASK_UPDATE_ASYNC)!=0)
 		{
-			tasks &= ~TASK_UPDATE_ASYNC;
+			tasks_buf &= ~TASK_UPDATE_ASYNC;
 			DBG_4_ON;
 			// Scan switches with debounce.
 			keys_simple_scan();
@@ -634,7 +663,7 @@ int main(void)
 				// Reset watchdog.
 				wdt_reset();
 				// Second tick.
-				tasks |= TASK_SEC_TICK;
+				tasks_buf |= TASK_SEC_TICK;
 #ifdef CONF_EN_HD44780
 				// Check if HD44780-compatible display is detected.
 				if((disp_presence&HW_DISP_44780)==0)
@@ -651,24 +680,34 @@ int main(void)
 					}
 				}
 #endif /* CONF_EN_HD44780 */
+#ifdef CONF_EN_I2C
 				if((kbd_state&SW_VID_SYS0)!=0)
 				{
-					HD44780_set_xy_position(0, 0);
-					I2C_write_data(i2c_addr, 0, NULL);
-					tasks |= TASK_I2C;
+					if((tasks_buf&TASK_I2C_SCAN)==0)
+					{
+						tasks_buf |= TASK_I2C_SCAN;
+						HD44780_set_xy_position(0, 1);
+						// Reset I2C address.
+						i2c_addr = 0x02;
+						// Reset presence flags.
+						i2c_40_range = i2c_70_range = i2c_E0_range = 0;
+						disp_presence &= ~(HW_DISP_I2C_40|HW_DISP_I2C_70|HW_DISP_I2C_78|HW_DISP_I2C_7A|HW_DISP_I2C_7C|HW_DISP_I2C_E0);
+					}
 				}
+#endif /* CONF_EN_I2C */
 			}
 #ifdef CONF_EN_HD44780
 			// Check if HD44780-compatible display is detected.
 			if((disp_presence&HW_DISP_44780)!=0)
 			{
+				/*uint8_t err_mask = 0;
 				// Setup character display test module.
-				/*chardisp_set_device(HD44780_upload_symbol_flash,
+				chardisp_set_device(HD44780_upload_symbol_flash,
 									HD44780_set_xy_position,
 									HD44780_write_data_byte,
 									HD44780_write_flash_string);
 				// HD44780-compatible display is connected.
-				err_mask = chardisp_step_animation(tasks&TASK_SEC_TICK);
+				err_mask = chardisp_step_animation(tasks_buf&TASK_SEC_TICK);
 				if(err_mask!=HD44780_OK)
 				{
 					// Seems like display fell of the bus.
@@ -687,19 +726,81 @@ int main(void)
 			}
 #endif /* CONF_EN_HD44780 */
 			// Clear processed tasks.
-			tasks &= ~TASK_SEC_TICK;
+			tasks_buf &= ~TASK_SEC_TICK;
 			DBG_4_OFF;
 		}
-		if((tasks&TASK_I2C)!=0)
+#ifdef CONF_EN_I2C
+		// Check if device scan is in progress.
+		if((tasks_buf&TASK_I2C_SCAN)!=0)
 		{
-			tasks &= ~TASK_I2C;
-			I2C_master_processor();
-			if((I2C_get_error()==I2C_ERR_M_ADR_NACK)||(I2C_get_error()==I2C_ERR_NO_DONE))
+			// Check if I2C is busy transmitting something.
+			if(I2C_is_busy()==I2C_MODE_IDLE)
 			{
-				HD44780_write_8bit_number(I2C_get_error(), HD44780_NUMBER_HEX);
-				i2c_addr++;
+				// Initiate write to a new address.
+				I2C_write_data(i2c_addr, 0, NULL);
+				tasks_buf |= TASK_I2C;
+				i2c_addr+=2;
+				if(i2c_addr>=I2C_RESERVED)
+				{
+					// Stop device scan.
+					tasks_buf &= ~TASK_I2C_SCAN;
+				}
 			}
 		}
+		if((tasks_buf&TASK_I2C)!=0)
+		{
+			tasks_buf &= ~TASK_I2C;
+			I2C_master_processor();
+			if(I2C_is_busy()==I2C_MODE_IDLE)
+			{
+				// No transmittion in progress.
+				if((tasks_buf&TASK_I2C_SCAN)!=0)
+				{
+					// Device scan in progress.
+					uint8_t i2c_err, i2c_addr;
+					i2c_err = I2C_get_error();
+					i2c_addr = I2C_get_write_address();
+					if(i2c_err==I2C_ERR_NO_DONE)
+					{
+						// Print address of detected slave device.
+						HD44780_write_8bit_number(i2c_addr, HD44780_NUMBER_HEX); HD44780_write_string((uint8_t *)"~");
+						if((i2c_addr>=I2C_PCF8574_START)&&(i2c_addr<=I2C_PCF8574_END))
+						{
+							disp_presence |= HW_DISP_I2C_40;
+							i2c_40_range |= (1<<((i2c_addr>>1)&0x07));
+						}
+						else if((i2c_addr>=I2C_PCF8574A_START)&&(i2c_addr<=I2C_PCF8574A_END))
+						{
+							disp_presence |= HW_DISP_I2C_70;
+							i2c_70_range |= (1<<((i2c_addr>>1)&0x07));
+						}
+						else if((i2c_addr>=I2C_HT16K33_START)&&(i2c_addr<=I2C_HT16K33_END))
+						{
+							disp_presence |= HW_DISP_I2C_E0;
+							i2c_E0_range |= (1<<((i2c_addr>>1)&0x07));
+						}
+						else if(i2c_addr==I2C_US2066_ADR1)
+						{
+							disp_presence |= HW_DISP_I2C_78;
+						}
+						else if(i2c_addr==I2C_US2066_ADR2)
+						{
+							disp_presence |= HW_DISP_I2C_7A;
+						}
+						else if(i2c_addr==I2C_ST7032I_ADR)
+						{
+							disp_presence |= HW_DISP_I2C_7C;
+						}
+					}
+					else if(i2c_err!=I2C_ERR_M_ADR_NACK)
+					{
+						// Stop device scan.
+						tasks_buf &= ~TASK_I2C_SCAN;
+					}
+				}
+			}
+		}
+#endif /* CONF_EN_I2C */
 	}
 
 	return 0;

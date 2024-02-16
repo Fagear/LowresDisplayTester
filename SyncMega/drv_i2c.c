@@ -42,7 +42,6 @@ inline void I2C_set_speed_400kHz(void)
 void I2C_set_target_address(uint8_t addr)
 {
 	// Mask out non-address bits.
-	addr = (addr<<1);
 	addr &= I2C_ADDRESS_MASK;
 	// Store address.
 	u8a_i2c_write_buffer[I2C_BUF_ADDR] = addr;
@@ -76,6 +75,16 @@ uint8_t I2C_get_len(void)
 	return u8_i2c_total_read_bytes;
 }
 
+uint8_t I2C_get_write_address(void)
+{
+	return u8a_i2c_write_buffer[I2C_BUF_ADDR];
+}
+
+uint8_t I2C_get_read_address(void)
+{
+	return u8a_i2c_read_buffer[I2C_BUF_ADDR];
+}
+
 //-------------------------------------- Get received data.
 void I2C_get_data(uint8_t *data)
 {
@@ -93,6 +102,12 @@ uint8_t I2C_get_error(void)
 	return u8_i2c_error;
 }
 
+//-------------------------------------- Is I2C busy?
+uint8_t I2C_is_busy(void)
+{
+	return u8_i2c_mode;
+}
+
 //-------------------------------------- Send data to the target address.
 void I2C_write_data(uint8_t addr, uint8_t cnt, uint8_t *data)
 {
@@ -102,6 +117,7 @@ void I2C_write_data(uint8_t addr, uint8_t cnt, uint8_t *data)
 	u8_i2c_tasks |= (1<<I2C_MODE_WR);
 }
 
+//-------------------------------------- State machine processing for I2C master.
 #ifdef I2C_MASTER_EN
 void I2C_master_processor(void)
 {
@@ -133,6 +149,8 @@ void I2C_master_processor(void)
 			// Check if there is something to read from I2C target.
 			if((u8_i2c_tasks&(1<<I2C_MODE_RD))!=0)
 			{
+				HD44780_write_8bit_number(u8_i2c_read_idx, HD44780_NUMBER_HEX); HD44780_write_string((uint8_t *)"-");
+				HD44780_write_8bit_number(u8_i2c_total_read_bytes, HD44780_NUMBER_HEX); HD44780_write_string((uint8_t *)"-");
 				HD44780_write_string((uint8_t *)"RUN_RD|");
 				// Initiate transmittion.
 				I2C_DO_START;
@@ -192,7 +210,7 @@ void I2C_master_processor(void)
 			// Send A+W.
 			I2C_DATA = u8a_i2c_write_buffer[I2C_BUF_ADDR];
 			u8_i2c_write_idx++;
-			HD44780_write_8bit_number((u8a_i2c_write_buffer[I2C_BUF_ADDR]>>1), HD44780_NUMBER_HEX); HD44780_write_string((uint8_t *)"-");
+			HD44780_write_8bit_number(u8a_i2c_write_buffer[I2C_BUF_ADDR], HD44780_NUMBER_HEX); HD44780_write_string((uint8_t *)"-");
 			HD44780_write_8bit_number(u8_i2c_write_idx, HD44780_NUMBER_HEX); HD44780_write_string((uint8_t *)"|");
 		}
 		else
@@ -201,7 +219,7 @@ void I2C_master_processor(void)
 			// Send A+R.
 			I2C_DATA = u8a_i2c_read_buffer[I2C_BUF_ADDR];
 			u8_i2c_read_idx++;
-			HD44780_write_8bit_number((u8a_i2c_read_buffer[I2C_BUF_ADDR]>>1), HD44780_NUMBER_HEX); HD44780_write_string((uint8_t *)"-");
+			HD44780_write_8bit_number(u8a_i2c_read_buffer[I2C_BUF_ADDR], HD44780_NUMBER_HEX); HD44780_write_string((uint8_t *)"-");
 			HD44780_write_8bit_number(u8_i2c_read_idx, HD44780_NUMBER_HEX); HD44780_write_string((uint8_t *)"|");
 		}
 		I2C_MASTER_NEXT_STEP;
@@ -329,12 +347,14 @@ void I2C_master_processor(void)
 #endif /* I2C_MASTER_EN */
 
 #ifdef I2C_SLAVE_EN
+//-------------------------------------- Set device's address in slave mode.
 void I2C_set_slave_address(uint8_t new_addr)
 {
 	// Save 7-bit address.
-	I2C_ADDRESS = (new_addr&0xFE);
+	I2C_ADDRESS = (new_addr&I2C_ADDRESS_MASK);
 }
 
+//-------------------------------------- State machine processing for I2C slave.
 inline void I2C_slave_processor(void)
 {
 	uint8_t tmp_data;

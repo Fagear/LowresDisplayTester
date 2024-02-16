@@ -25,37 +25,55 @@ Pre-compile configuration file.
 #ifndef CONFIG_H_
 #define CONFIG_H_
 
+// These setting directly affect how much ROM will be required from MCU.
+// Note that device like ATmega48 or ATmega88 can not fit all listed options!
+// Video sync generation available for all supported MCUs,
+// other options can/should be switched off.
 //#define CONF_NO_DEBUG_PINS			// Disable debugging pins
 #define CONF_EN_HD44780				// Enable support for character displays with HD44780/KS0066/ÊÁ1013ÂÃ6/SPLC780 parallel controllers
 #define CONF_EN_I2C					// Enable support for I2C displays and expanders
+#define CONF_EN_UART				// Enable support for UART displays testing
 
 #ifdef CONF_EN_HD44780
-	#define CONF_EN_CHARDISP		// Enable support for character displays testing.
+	#define CONF_EN_CHARDISP		// Enable support for character displays testing
+#elif defined CONF_EN_UART
+	#define CONF_EN_CHARDISP		// Enable support for character displays testing
+#elif defined CONF_EN_I2C
+	#define CONF_EN_CHARDISP		// Enable support for character displays testing
 #endif /* CONF_EN_HD44780 */
 
-#define UART_IN_LEN			8			// UART receiving buffer length.
-#define UART_OUT_LEN		512U		// UART transmitting buffer length.
+#ifdef CONF_EN_UART
+	#define UART_IN_LEN			8	// UART receiving buffer length
+	#define UART_OUT_LEN		384U// UART transmitting buffer length
+#endif /* CONF_EN_UART */
 
-// I2C devices.
+// I2C devices (including zeroed R/W bit).
 enum
 {
 	I2C_GEN_CALL		= 0x00,		// General call
-	I2C_PCF8574_START	= 0x20,		// Used on I2C - HD44780 "backpacks"
-	I2C_PCF8574_END		= 0x27,		// Used on I2C - HD44780 "backpacks"
+	I2C_PCF8574_START	= 0x40,		// Used on I2C - HD44780 "backpacks"
+	I2C_PCF8574_END		= 0x4E,		// Used on I2C - HD44780 "backpacks"
 	I2C_PCF8574A_START	= 0x70,		// Used on I2C - HD44780 "backpacks"
-	I2C_PCF8574A_END	= 0x77,		// Used on I2C - HD44780 "backpacks"
-	I2C_HT16K33_START	= 0x70,
-	I2C_HT16K33_END		= 0x77,
-	I2C_SSD1306_ADR1	= 0x3C,		// Used on OLED graphic ~1" displays
-	I2C_SSD1306_ADR2	= 0x3D,		// Used on OLED graphic ~1" displays
-	I2C_ST7032_ADR		= 0x3E,
-	I2C_US2066_ADR1		= 0x3C,		// Used on OLED HD44780-compatible displays
-	I2C_US2066_ADR2		= 0x3D,		// Used on OLED HD44780-compatible displays
+	I2C_PCF8574A_END	= 0x7E,		// Used on I2C - HD44780 "backpacks"
+	I2C_SSD1306_ADR1	= 0x78,		// Used on OLED graphic ~1" displays
+	I2C_SSD1306_ADR2	= 0x7A,		// Used on OLED graphic ~1" displays
+	I2C_US2066_ADR1		= 0x78,		// Used on OLED HD44780-compatible displays
+	I2C_US2066_ADR2		= 0x7A,		// Used on OLED HD44780-compatible displays
+	I2C_ST7032I_ADR		= 0x7C,		// LCD character display driver
+	I2C_HT16K33_START	= 0xE0,		// LED/button driver
+	I2C_HT16K33_END		= 0xEE,		// LED/button driver
+	I2C_RESERVED		= 0xF0,		// Start of the reserved address space
 };
 
 enum
 {
-	HW_DISP_44780 = (1<<0),			// Presence of HD44780-compatible display
+	HW_DISP_44780		= (1<<0),	// Presence of HD44780-compatible display
+	HW_DISP_I2C_40		= (1<<1),	// Presence of at least one I2C device in 0x40...0x4E range
+	HW_DISP_I2C_70		= (1<<2),	// Presence of at least one I2C device in 0x70...0x7E range
+	HW_DISP_I2C_78		= (1<<3),	// Presence of a I2C device at 0x78 address
+	HW_DISP_I2C_7A		= (1<<4),	// Presence of a I2C device at 0x7A address
+	HW_DISP_I2C_7C		= (1<<5),	// Presence of a I2C device at 0x7C address
+	HW_DISP_I2C_E0		= (1<<6),	// Presence of at least one I2C device in 0xE0...0xEE range
 };
 
 // Horizontal clocks

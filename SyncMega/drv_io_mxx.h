@@ -264,13 +264,14 @@ inline void HW_init(void)
 #ifdef FGR_DRV_SPI_HW_FOUND
 	SPI_init_HW();
 #endif /* FGR_DRV_SPI_HW_FOUND */
+#ifdef FGR_DRV_UART_HW_FOUND
+	UART_init_HW();
+#endif /* FGR_DRV_UART_HW_FOUND */
 #ifdef FGR_DRV_UARTSPI_HW_FOUND
 	UART_SPI_init_HW();
 #endif /* FGR_DRV_UARTSPI_HW_FOUND */
 #ifdef FGR_DRV_I2C_HW_FOUND
 	I2C_init_HW();
-	I2C_set_speed_100kHz();
-	I2C_INIT_MASTER;
 #endif /* FGR_DRV_I2C_HW_FOUND */
 	
 	// Enable debug pins.

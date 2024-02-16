@@ -26,7 +26,7 @@ Part of the [LowresDisplayTester] project.
 
 #include <stdio.h>
 #include "config.h"
-#include "drv_cpu.h"
+//#include "drv_cpu.h"
 #include "drv_io.h"
 #ifdef CONF_EN_HD44780
 	#include "drv_hd44780[4bit].h"
@@ -87,6 +87,9 @@ enum
 	TASK_UPDATE_ASYNC = (1<<0),
 	TASK_SEC_TICK = (1<<1),
 	TASK_I2C = (1<<2),
+	TASK_I2C_SCAN = (1<<3),
+	TASK_UART_RX = (1<<4),
+	TASK_UART_TX = (1<<5),
 };
 
 void system_startup(void);

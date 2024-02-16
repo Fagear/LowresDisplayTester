@@ -202,8 +202,11 @@ void I2C_set_speed_400kHz(void);			// Set I2C clock to 400 kHz
 void I2C_set_target_address(uint8_t addr);	// Set address of I2C device to connect to
 void I2C_set_data(uint8_t cnt, uint8_t *data);	// Set data array to be send and number of bytes
 uint8_t I2C_get_len(void);						// Get length of the received data
+uint8_t I2C_get_write_address(void);
+uint8_t I2C_get_read_address(void);
 void I2C_get_data(uint8_t *data);				// Get received data
 uint8_t I2C_get_error(void);					// Get last error
+uint8_t I2C_is_busy(void);						// Is I2C busy?
 void I2C_write_data(uint8_t addr, uint8_t cnt, uint8_t *data);
 void I2C_read_data(uint8_t addr, uint8_t cnt);
 
