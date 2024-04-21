@@ -250,6 +250,4 @@ uint8_t HD44780_upload_symbol_flash(uint8_t symbol_number, const int8_t *symbol_
 
 #endif /* CONF_EN_HD44780 */
 
-// PT6314 always returns "010x" as MSBs of CG RAM reads.
-
 #endif // FR_DRV_HD44780_4BIT

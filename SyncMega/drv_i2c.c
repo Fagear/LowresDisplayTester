@@ -109,12 +109,17 @@ uint8_t I2C_is_busy(void)
 }
 
 //-------------------------------------- Send data to the target address.
-void I2C_write_data(uint8_t addr, uint8_t cnt, uint8_t *data)
+uint8_t I2C_write_data(uint8_t addr, uint8_t cnt, uint8_t *data)
 {
+	if(I2C_is_busy()!=I2C_MODE_IDLE)
+	{
+		return I2C_BUSY;
+	}
 	HD44780_write_string((uint8_t *)"NEW_DATA|");
 	I2C_set_target_address(addr);
 	I2C_set_data(cnt, data);
 	u8_i2c_tasks |= (1<<I2C_MODE_WR);
+	return I2C_ACCEPT;
 }
 
 //-------------------------------------- State machine processing for I2C master.
@@ -510,7 +515,7 @@ inline void I2C_slave_processor(void)
 		{
 			if(u8_i2c_write_idx<u8_i2c_total_write_bytes)
 			{
-				I2C_set_data(u8a_i2c_write_buffer[u8_i2c_write_idx]);
+				//I2C_set_data(u8a_i2c_write_buffer[u8_i2c_write_idx]);
 				u8_i2c_write_idx++;
 				if(u8_i2c_write_idx==u8_i2c_total_write_bytes)
 				{
@@ -524,7 +529,7 @@ inline void I2C_slave_processor(void)
 			else
 			{
 				// Output dummy byte.
-				I2C_set_data(0x5A);
+				//I2C_set_data(0x5A);
 				I2C_WRITE_ONE;
 			}
 		}

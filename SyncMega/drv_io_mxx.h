@@ -154,13 +154,13 @@ Supported MCUs:	ATmega8(-/A), ATmega16(-/A), ATmega32(-/A).
 	#define HD44780DATA_DIR		DDRC
 	#define HD44780DATA_PORT	PORTC
 	#define HD44780DATA_SRC		PINC
-	#define HD44780_A0			(1<<5)
+	#define HD44780_A0			(1<<7)
 	#define HD44780_RW			(1<<6)
-	#define HD44780_E			(1<<7)
-	#define HD44780_D4			(1<<5)
-	#define HD44780_D5			(1<<4)
-	#define HD44780_D6			(1<<3)
-	#define HD44780_D7			(1<<2)
+	#define HD44780_E			(1<<5)
+	#define HD44780_D4			(1<<2)
+	#define HD44780_D5			(1<<3)
+	#define HD44780_D6			(1<<4)
+	#define HD44780_D7			(1<<5)
 #endif /* FGR_DRV_IO_M8 */
 #endif /* CONF_EN_HD44780 */
 

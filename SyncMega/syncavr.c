@@ -724,6 +724,29 @@ int main(void)
 					}
 				}*/
 			}
+			if((disp_presence&HW_DISP_I2C_78)!=0)
+			{
+				uint8_t err_mask = 0;
+				HD44780s_set_address(I2C_US2066_ADR1);
+				// Setup character display test module.
+				chardisp_set_device(HD44780s_upload_symbol_flash,
+									HD44780s_set_xy_position,
+									HD44780s_write_data_byte,
+									HD44780s_write_flash_string);
+				// HD44780-compatible display is connected.
+				err_mask = chardisp_step_animation(tasks_buf&TASK_SEC_TICK);
+				if(err_mask!=HD44780_OK)
+				{
+					// Seems like display fell of the bus.
+					disp_presence &= ~HW_DISP_I2C_78;
+				}
+				// Check if animation cycle has finished.
+				if(chardisp_cycle_done()==ST_ANI_DONE)
+				{
+					// Check display hardware.
+					tasks_buf |= TASK_I2C_SCAN;
+				}
+			}
 #endif /* CONF_EN_HD44780 */
 			// Clear processed tasks.
 			tasks_buf &= ~TASK_SEC_TICK;
@@ -734,10 +757,9 @@ int main(void)
 		if((tasks_buf&TASK_I2C_SCAN)!=0)
 		{
 			// Check if I2C is busy transmitting something.
-			if(I2C_is_busy()==I2C_MODE_IDLE)
+			if(I2C_write_data(i2c_addr, 0, NULL)==I2C_ACCEPT)
 			{
 				// Initiate write to a new address.
-				I2C_write_data(i2c_addr, 0, NULL);
 				tasks_buf |= TASK_I2C;
 				i2c_addr+=2;
 				if(i2c_addr>=I2C_RESERVED)

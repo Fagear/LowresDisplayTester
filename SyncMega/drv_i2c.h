@@ -181,11 +181,18 @@ enum
 // I2C error codes.
 enum
 {
-	I2C_ERR_NO,								// No error
-	I2C_ERR_NO_DONE,						// No error, transmittion is finished
-	I2C_ERR_LOST_ARB,						// I2C bus error or lost arbitration
-	I2C_ERR_M_ADR_NACK,						// I2C-M got NACK while sending address
-	I2C_ERR_M_DATA_NACK,					// I2C-M got NACK while sending data
+	I2C_ERR_NO,			// No error
+	I2C_ERR_NO_DONE,	// No error, transmittion is finished
+	I2C_ERR_LOST_ARB,	// I2C bus error or lost arbitration
+	I2C_ERR_M_ADR_NACK,	// I2C-M got NACK while sending address
+	I2C_ERR_M_DATA_NACK,// I2C-M got NACK while sending data
+};
+
+// I2C return codes for external calls.
+enum
+{
+	I2C_ACCEPT,			// Request is accepted by I2C driver
+	I2C_BUSY			// I2C bus is busy, request can not be fulfilled
 };
 
 // I2C driver configuration.
@@ -207,8 +214,8 @@ uint8_t I2C_get_read_address(void);
 void I2C_get_data(uint8_t *data);				// Get received data
 uint8_t I2C_get_error(void);					// Get last error
 uint8_t I2C_is_busy(void);						// Is I2C busy?
-void I2C_write_data(uint8_t addr, uint8_t cnt, uint8_t *data);
-void I2C_read_data(uint8_t addr, uint8_t cnt);
+uint8_t I2C_write_data(uint8_t addr, uint8_t cnt, uint8_t *data);
+uint8_t I2C_read_data(uint8_t addr, uint8_t cnt);
 
 #ifdef I2C_MASTER_EN
 	void I2C_master_processor(void);

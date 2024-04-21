@@ -86,13 +86,13 @@ uint8_t HD44780_init(void)
 	_delay_us(40);
 	// Set 4-bit transfer mode (4-bit) and codepage (page 1).
 	// Set 4-bit transfer mode (4-bit), 2-line display, 5x8 font.
-	error_collector += HD44780_write_byte(HD44780_CMD_FUNC|HD44780_FUNC_2LINE, HD44780_CMD);
+	error_collector |= HD44780_write_byte(HD44780_CMD_FUNC|HD44780_FUNC_2LINE, HD44780_CMD);
 	// Turn display off and set no cursor, no blinking.
-	error_collector += HD44780_write_byte(HD44780_CMD_DISP, HD44780_CMD);
+	error_collector |= HD44780_write_byte(HD44780_CMD_DISP, HD44780_CMD);
 	// Clear display.
-	error_collector += HD44780_write_byte(HD44780_CMD_CLR, HD44780_CMD);
+	error_collector |= HD44780_write_byte(HD44780_CMD_CLR, HD44780_CMD);
 	// Set cursor shift: "right".
-	error_collector += HD44780_write_byte(HD44780_CMD_ENTRY|HD44780_ENTRY_RIGHT, HD44780_CMD);
+	error_collector |= HD44780_write_byte(HD44780_CMD_ENTRY|HD44780_ENTRY_RIGHT, HD44780_CMD);
 #ifdef HD44780_USE_SCREEN_BUFFERS
 	// Clear buffers.
 	for(uint8_t rows=0;rows<HD44780_MAX_ROWS;rows++)
@@ -117,6 +117,7 @@ uint8_t HD44780_init(void)
 	{
 		return HD44780_ERR_BUSY;
 	}
+	// Turn display on.
 	HD44780_write_byte(HD44780_CMD_DISP|HD44780_DISP_SCREEN, HD44780_CMD);
 	// Check bus connection to the display and its RAM.
 	//return HD44780_selftest();
@@ -592,8 +593,8 @@ uint8_t HD44780_ddram_read(uint8_t x_pos, uint8_t *read_result)
 	while(read_tries>0)
 	{
 		// Read data at position in DDRAM.
-		error_collector += HD44780_set_x_position(x_pos);
-		error_collector += HD44780_read_byte(&read_data[arr_idx]);
+		error_collector |= HD44780_set_x_position(x_pos);
+		error_collector |= HD44780_read_byte(&read_data[arr_idx]);
 		// Sliding window for last 3.
 		if(arr_idx<2)
 		{
@@ -638,8 +639,8 @@ uint8_t HD44780_cgram_read(uint8_t char_idx, uint8_t *read_result)
 	while(read_tries>0)
 	{
 		// Read data at position in CGRAM.
-		error_collector += HD44780_write_byte((HD44780_CMD_SCGR|char_idx), HD44780_CMD);
-		error_collector += HD44780_read_byte(&read_data[arr_idx]);
+		error_collector |= HD44780_write_byte((HD44780_CMD_SCGR|char_idx), HD44780_CMD);
+		error_collector |= HD44780_read_byte(&read_data[arr_idx]);
 		// Sliding window for last 3.
 		if(arr_idx<2)
 		{
@@ -677,10 +678,10 @@ uint8_t HD44780_selftest(void)
 {
 	uint8_t error_collector = 0, saved_char = ASCII_SPACE, saved_line, check_byte;
 	// Save symbol to variable.
-	error_collector += HD44780_ddram_read(HD44780_TEST_ADDR, &saved_char);
+	error_collector |= HD44780_ddram_read(HD44780_TEST_ADDR, &saved_char);
 	// Send test symbol 1.
-	error_collector += HD44780_set_x_position(HD44780_TEST_ADDR);
-	error_collector += HD44780_write_byte(HD44780_TEST_CHAR1, HD44780_DATA);
+	error_collector |= HD44780_set_x_position(HD44780_TEST_ADDR);
+	error_collector |= HD44780_write_byte(HD44780_TEST_CHAR1, HD44780_DATA);
 	// Read symbol back.
 	error_collector = HD44780_ddram_read(HD44780_TEST_ADDR, &check_byte);
 	if(check_byte!=HD44780_TEST_CHAR1)
@@ -692,8 +693,8 @@ uint8_t HD44780_selftest(void)
 		return HD44780_ERR_BUSY;
 	}
 	// Send test symbol 2.
-	error_collector += HD44780_set_x_position(HD44780_TEST_ADDR);
-	error_collector += HD44780_write_byte(HD44780_TEST_CHAR2, HD44780_DATA);
+	error_collector |= HD44780_set_x_position(HD44780_TEST_ADDR);
+	error_collector |= HD44780_write_byte(HD44780_TEST_CHAR2, HD44780_DATA);
 	// Read symbol back.
 	error_collector = HD44780_ddram_read(HD44780_TEST_ADDR, &check_byte);
 	if(check_byte!=HD44780_TEST_CHAR2)
@@ -705,19 +706,20 @@ uint8_t HD44780_selftest(void)
 		return HD44780_ERR_BUSY;
 	}
 	// Send symbol from custom-CG area.
-	error_collector += HD44780_set_x_position(HD44780_TEST_ADDR);
-	error_collector += HD44780_write_byte(0, HD44780_DATA);
+	error_collector |= HD44780_set_x_position(HD44780_TEST_ADDR);
+	error_collector |= HD44780_write_byte(0, HD44780_DATA);
 	// Cycle through all lines of one CG character.
 	for(uint8_t idx=0;idx<8;idx+=2)
 	{
 		// Save CG line.
-		error_collector += HD44780_cgram_read(idx, &saved_line);
+		error_collector |= HD44780_cgram_read(idx, &saved_line);
 		// Re-set CGRAM address.
-		error_collector += HD44780_write_byte((HD44780_CMD_SCGR|idx), HD44780_CMD);
+		error_collector |= HD44780_write_byte((HD44780_CMD_SCGR|idx), HD44780_CMD);
 		// Write test pattern.
-		error_collector += HD44780_write_byte((HD44780_TEST_CHAR1&HD44780_TEST_CG_MASK), HD44780_DATA);
+		// (PT6314 always returns "010x" as MSBs of CG RAM reads)
+		error_collector |= HD44780_write_byte((HD44780_TEST_CHAR1&HD44780_TEST_CG_MASK), HD44780_DATA);
 		// Read pattern back.
-		error_collector += HD44780_cgram_read(idx, &check_byte);
+		error_collector |= HD44780_cgram_read(idx, &check_byte);
 		if((check_byte&HD44780_TEST_CG_MASK)!=(HD44780_TEST_CHAR1&HD44780_TEST_CG_MASK))
 		{
 			return HD44780_ERR_BUS;
@@ -727,9 +729,9 @@ uint8_t HD44780_selftest(void)
 			return HD44780_ERR_BUSY;
 		}
 		// Repeat with 2nd test pattern.
-		error_collector += HD44780_write_byte((HD44780_CMD_SCGR|idx), HD44780_CMD);
-		error_collector += HD44780_write_byte((HD44780_TEST_CHAR2&HD44780_TEST_CG_MASK), HD44780_DATA);
-		error_collector += HD44780_cgram_read(idx, &check_byte);
+		error_collector |= HD44780_write_byte((HD44780_CMD_SCGR|idx), HD44780_CMD);
+		error_collector |= HD44780_write_byte((HD44780_TEST_CHAR2&HD44780_TEST_CG_MASK), HD44780_DATA);
+		error_collector |= HD44780_cgram_read(idx, &check_byte);
 		if((check_byte&HD44780_TEST_CG_MASK)!=(HD44780_TEST_CHAR2&HD44780_TEST_CG_MASK))
 		{
 			return HD44780_ERR_BUS;
@@ -752,11 +754,6 @@ uint8_t HD44780_selftest(void)
 uint8_t HD44780_upload_symbol_flash(uint8_t symbol_number, const int8_t *symbol_array)
 {
 	uint8_t idx, err_count = 0;
-	// Check for custom symbol count limit.
-	if(symbol_number>7)
-	{
-		return HD44780_ERR_DATA;
-	}
 	// Mask out character selector above 7 (normally 0...7 are configurable).
 	symbol_number &= 0x07;
 	// Move DDRAM bits 3 bits left for CGRAM bits 5...3.
@@ -765,12 +762,12 @@ uint8_t HD44780_upload_symbol_flash(uint8_t symbol_number, const int8_t *symbol_
 	// Add "Set CGRAM address" command bit.
 	symbol_number |= HD44780_CMD_SCGR;
 	// Send CGRAM address command.
-	err_count += HD44780_write_byte(symbol_number, HD44780_CMD);
+	err_count |= HD44780_write_byte(symbol_number, HD44780_CMD);
 	// Cycle through rows of the CG matrix.
 	for(idx=0;idx<8;idx++)
 	{
 		// Write byte.
-		err_count += HD44780_write_byte(pgm_read_byte_near(symbol_array+idx), HD44780_DATA);
+		err_count |= HD44780_write_byte(pgm_read_byte_near(symbol_array+idx), HD44780_DATA);
 	}
 	if(err_count==0)
 	{
@@ -790,35 +787,35 @@ uint8_t HD44780_write_8bit_number(const uint8_t send_number, const uint8_t send_
 	// Convert and output.
 	if(send_mode==HD44780_NUMBER_SPACES)
 	{
-		err_count += HD44780_write_byte(send_number/100, HD44780_NONZERO_DIGIT);
+		err_count |= HD44780_write_byte(send_number/100, HD44780_NONZERO_DIGIT);
 		if(send_number<100)
-			err_count += HD44780_write_byte(send_number%100/10, HD44780_NONZERO_DIGIT);
+			err_count |= HD44780_write_byte(send_number%100/10, HD44780_NONZERO_DIGIT);
 		else
-			err_count += HD44780_write_byte(send_number%100/10, HD44780_DIGIT);
-		err_count += HD44780_write_byte(send_number%10, HD44780_DIGIT);
+			err_count |= HD44780_write_byte(send_number%100/10, HD44780_DIGIT);
+		err_count |= HD44780_write_byte(send_number%10, HD44780_DIGIT);
 	}
 	else if(send_mode==HD44780_NUMBER)
 	{
 		if(send_number>=100)
 		{
-			err_count += HD44780_write_byte(send_number/100, HD44780_DIGIT);
-			err_count += HD44780_write_byte(send_number%100/10, HD44780_DIGIT);
-			err_count += HD44780_write_byte(send_number%10, HD44780_DIGIT);
+			err_count |= HD44780_write_byte(send_number/100, HD44780_DIGIT);
+			err_count |= HD44780_write_byte(send_number%100/10, HD44780_DIGIT);
+			err_count |= HD44780_write_byte(send_number%10, HD44780_DIGIT);
 		}
 		else if(send_number>=10)
 		{
-			err_count += HD44780_write_byte(send_number%100/10, HD44780_DIGIT);
-			err_count += HD44780_write_byte(send_number%10, HD44780_DIGIT);
+			err_count |= HD44780_write_byte(send_number%100/10, HD44780_DIGIT);
+			err_count |= HD44780_write_byte(send_number%10, HD44780_DIGIT);
 		}
 		else
 		{
-			err_count += HD44780_write_byte(send_number%10, HD44780_DIGIT);
+			err_count |= HD44780_write_byte(send_number%10, HD44780_DIGIT);
 		}
 	}
 	else if(send_mode==HD44780_NUMBER_HEX)
 	{
-		err_count += HD44780_write_byte(send_number/0x10, HD44780_HEX_DIGIT);
-		err_count += HD44780_write_byte(send_number%0x10, HD44780_HEX_DIGIT);
+		err_count |= HD44780_write_byte(send_number/0x10, HD44780_HEX_DIGIT);
+		err_count |= HD44780_write_byte(send_number%0x10, HD44780_HEX_DIGIT);
 	}
 	// Check for errors.
 	if(err_count==0)

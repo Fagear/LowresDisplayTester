@@ -30,6 +30,7 @@ Part of the [LowresDisplayTester] project.
 #include "drv_io.h"
 #ifdef CONF_EN_HD44780
 	#include "drv_hd44780[4bit].h"
+	#include "drv_hd44780[serial].h"
 	#include "test_chardisp.h"
 #endif /* CONF_EN_HD44780 */
 #include "test_video.h"
