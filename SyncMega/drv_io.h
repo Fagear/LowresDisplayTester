@@ -34,6 +34,14 @@ Supported MCUs:	ATmega8(-/A), ATmega16(-/A), ATmega32(-/A), ATmega48(-/A/P/AP), 
 
 #include <avr/io.h>
 
+#include "drv_spi.h"
+#ifdef CONF_EN_I2C
+	#include "drv_i2c.h"
+#endif /* CONF_EN_I2C */
+#ifdef CONF_EN_UART
+	#include "drv_uart.h"
+#endif /* CONF_EN_UART */
+
 #if SIGNATURE_1 == 0x92
 	#if SIGNATURE_2 == 0x05			// ATmega48, ATmega48A
 		#include "drv_io_mxx8.h"
@@ -74,13 +82,7 @@ Supported MCUs:	ATmega8(-/A), ATmega16(-/A), ATmega32(-/A), ATmega48(-/A/P/AP), 
 	#error Not supported MCU (by SIGNATURE_1)!
 #endif /* SIGNATURE_1 */
 
-#include "drv_spi.h"
-#ifdef CONF_EN_I2C
-	#include "drv_i2c.h"
-#endif /* CONF_EN_I2C */
-#ifdef CONF_EN_UART
-	#include "drv_uart.h"
-#endif /* CONF_EN_UART */
+#include "drv_hd44780[4bit].h"
 
 //avr-gcc includes are broken...
 /*#ifdef CONF_EN_UART

@@ -13,7 +13,7 @@ uint8_t act_delay = COMP_ACT_DELAY_525i;			// Line active part start delay from 
 uint16_t sync_step_cnt = 0;							// Current step in sync generator logic.
 uint16_t sync_step_limit = 0;						// Maximum step number for selected video system.
 uint16_t frame_line_cnt = 0;						// Number of current line in the frame.
-uint8_t video_sys = MODE_COMP_625i;					// Video system value, used in interrupt (buffered).
+volatile uint8_t video_sys = MODE_COMP_625i;					// Video system value, used in interrupt (buffered).
 uint8_t kbd_state = 0;								// Buttons states from the last [keys_simple_scan()] poll.
 uint8_t kbd_pressed = 0;							// Flags for buttons that have been pressed (should be cleared after processing).
 uint8_t kbd_released = 0;							// Flags for buttons that have been released (should be cleared after processing).
@@ -26,7 +26,8 @@ volatile const uint8_t ucaf_author[] PROGMEM = "Maksim Kryukov aka Fagear (fagea
 volatile const uint8_t ucaf_info[] PROGMEM = "ATmega sync gen/display tester";					// Firmware description
 
 //-------------------------------------- Video sync timing (horizontal/composite), active region timing management (each H-line).
-ISR(INT0_INT)
+//ISR(INT0_INT)
+ISR(PCINT0_vect)
 {	
 	/*if(frame_line_cnt==(dbg_index-1))
 	{
@@ -35,33 +36,33 @@ ISR(INT0_INT)
 		__builtin_avr_delay_cycles(1);
 		DBG_5_OFF;
 	}*/
+	// Stabilize active region.
+	while(SYNC_DATA_8B<H_STBL_DELAY) {}
 	DBG_2_ON;
 #ifdef FGR_DRV_IO_T0OC_HW_FOUND
 	// Check if current line is in vertical active region.
-	if(active_region!=0)
+	if(active_region==0)
+	{
+		// Disable line active part interrupt inside VBI.
+		LACT_DIS_INTR;
+	}
+	else
 	{
 		// Shift PWM cycle to align with H-sync.
 		LACT_DATA = act_delay;
-		// Enable interrupt to start drawing at the beginning of active range.
-		LACT_EN_INTR;
 		// Force OC pin low at the start of H-sync.
 		LACT_OC_DIS; LACT_OC_CLEAR;
 		LACT_OC_FORCE;
 		// Switch to "Toggle OC pin on compare" to allow pin to be switched HIGH on the next compare after H-sync.
 		LACT_OC_DIS; LACT_OC_TOGGLE;
+		// Enable interrupt to start drawing at the beginning of active range.
+		LACT_EN_INTR;
 	}
-	else
-	{
-		// Disable line active part interrupt inside VBI.
-		LACT_DIS_INTR;
-		// Disable active line pin.
-		LACT_OC_DIS;
-	}
-#endif
+#endif	/* FGR_DRV_IO_T0OC_HW_FOUND */
+	// Line-by-line sync and timing management.
 	if(video_sys==MODE_VGA_60Hz)
 	{
 		// VGA 640x480@60
-		DBG_4_ON;
 		// First, process vertical sync.
 		if(sync_step_cnt==VGA_VS_START)
 		{
@@ -90,7 +91,6 @@ ISR(INT0_INT)
 			// Disable drawing in inactive region.
 			active_region = 0;
 		}
-		DBG_4_OFF;
 	}
 	else if(video_sys==MODE_EGA)
 	{
@@ -307,7 +307,18 @@ ISR(INT0_INT)
 			active_region = 0;
 		}
 	}
+#ifdef FGR_DRV_IO_T0OC_HW_FOUND
+	// This part moved from time critical stuff at the top.
+	// Check if current line is in vertical active region.
+	if(active_region==0)
+	{
+		// Disable active line pin.
+		LACT_OC_DIS;
+	}
+#endif /* FGR_DRV_IO_T0OC_HW_FOUND */
+
 	// Go through steps.
+	tasks &= ~TASK_UPDATE_ASYNC;
 	sync_step_cnt++;
 	if(sync_step_cnt>sync_step_limit)
 	{
@@ -346,9 +357,10 @@ ISR(INT0_INT)
 		act_delay = usr_act_delay;
 		// Apply length of the active part of the line.
 		LACT_PULSE_DUR = usr_act_time;
-#endif
+#endif /* FGR_DRV_IO_T0OC_HW_FOUND */
 		DBG_1_OFF;
 	}
+	PCIFR |= (1<<PCIF0);
 	DBG_2_OFF;
 }
 
@@ -360,6 +372,7 @@ ISR(LACT_COMP_INT)
 	// Disable interrupt for the end of the line (to prevent shifting H-sync interrupt).
 	LACT_DIS_INTR;
 #ifdef FGR_DRV_SPI_HW_FOUND
+	while(LACT_DATA<A_STBL_DELAY) {}
 	// Start drawing patterns.
 	comp_data_idx = 0;
 	if((active_region&ACT_MN_LINES)!=0)
@@ -633,12 +646,12 @@ int main(void)
 	
 #ifdef CONF_EN_HD44780
 	//HD44780_setup(HD44780_RES_16X2, HD44780_CYR_NOCONV);
-	if(HD44780_init()==HD44780_OK)
+	/*if(HD44780_init()==HD44780_OK)
 	{
 		disp_presence |= HW_DISP_44780;
 		HD44780_set_xy_position(0, 0);
 		HD44780_write_string((uint8_t *)"Display TEST|");
-	}
+	}*/
 #endif /* CONF_EN_HD44780 */
 	
 	// Enable interrupts globally.
@@ -647,6 +660,9 @@ int main(void)
 	while(1)
 	{
 		tasks_buf |= tasks;
+		//cli();
+		//tasks = 0;
+		//sei();
 		if((tasks_buf&TASK_UPDATE_ASYNC)!=0)
 		{
 			tasks_buf &= ~TASK_UPDATE_ASYNC;
@@ -666,7 +682,7 @@ int main(void)
 				tasks_buf |= TASK_SEC_TICK;
 #ifdef CONF_EN_HD44780
 				// Check if HD44780-compatible display is detected.
-				if((disp_presence&HW_DISP_44780)==0)
+				/*if((disp_presence&HW_DISP_44780)==0)
 				{
 					// No display found, try to re-init it.
 					if(HD44780_init()==HD44780_OK)
@@ -678,7 +694,7 @@ int main(void)
 					{
 						disp_presence &= ~HW_DISP_44780;
 					}
-				}
+				}*/
 #endif /* CONF_EN_HD44780 */
 #ifdef CONF_EN_I2C
 				if((kbd_state&SW_VID_SYS0)!=0)
@@ -686,7 +702,7 @@ int main(void)
 					if((tasks_buf&TASK_I2C_SCAN)==0)
 					{
 						tasks_buf |= TASK_I2C_SCAN;
-						HD44780_set_xy_position(0, 1);
+						//HD44780_set_xy_position(0, 1);
 						// Reset I2C address.
 						i2c_addr = 0x02;
 						// Reset presence flags.
@@ -727,7 +743,7 @@ int main(void)
 			if((disp_presence&HW_DISP_I2C_78)!=0)
 			{
 				uint8_t err_mask = 0;
-				HD44780s_set_address(I2C_US2066_ADR1);
+				//HD44780s_set_address(I2C_US2066_ADR1);
 				// Setup character display test module.
 				chardisp_set_device(HD44780s_upload_symbol_flash,
 									HD44780s_set_xy_position,
@@ -772,7 +788,7 @@ int main(void)
 		if((tasks_buf&TASK_I2C)!=0)
 		{
 			tasks_buf &= ~TASK_I2C;
-			I2C_master_processor();
+			/*I2C_master_processor();
 			if(I2C_is_busy()==I2C_MODE_IDLE)
 			{
 				// No transmittion in progress.
@@ -820,7 +836,7 @@ int main(void)
 						tasks_buf &= ~TASK_I2C_SCAN;
 					}
 				}
-			}
+			}*/
 		}
 #endif /* CONF_EN_I2C */
 	}

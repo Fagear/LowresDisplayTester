@@ -304,8 +304,8 @@ inline void HW_init(void)
 	
 	// Enable draw starting interrupts.
 	// INT0 tied to Timer1 compare output is used to re-configure PWM for H-sync.
-	INT0_CONFIG_PIN1; INT0_CONFIG_PIN2;
-	INT0_CONFIG_REG; INT0_EN;
+	//INT0_CONFIG_PIN1; INT0_CONFIG_PIN2;
+	//INT0_CONFIG_REG; INT0_EN;
 }
 
 #endif /* FGR_DRV_IO_MXX_H_ */

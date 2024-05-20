@@ -69,6 +69,7 @@ Supported MCUs:	ATmega48(-/A/P/AP), ATmega88(-/A/P/AP), ATmega168(-/A/P/AP), ATm
 #define SYNC_CONFIG_RUN		TCCR1B = (0<<ICNC1)|(0<<ICES1)|(1<<WGM13)|(1<<WGM12)|(0<<CS12)|(0<<CS11)|(1<<CS10)	// Start timer with clk/1 clock
 #define SYNC_STEP_DUR		ICR1									// TOP for counter
 #define SYNC_DATA			TCNT1									// Count register
+#define SYNC_DATA_8B		TCNT1L
 #define SYNC_PULSE_DUR		OCR1A									// Duty cycle register
 #define SYNC_CONFIG_PIN1	PORTB &= ~(1<<1)						// Output pin port
 #define SYNC_CONFIG_PIN2	DDRB |= (1<<1)							// Output pin direction
@@ -128,7 +129,7 @@ Supported MCUs:	ATmega48(-/A/P/AP), ATmega88(-/A/P/AP), ATmega168(-/A/P/AP), ATm
 #define PWR_ADC_OPT			DIDR0 |= (1<<ADC0D)|(1<<ADC1D)|(1<<ADC2D)|(1<<ADC3D)|(1<<ADC4D)		// Turn off digital buffers on used ADC inputs
 
 #ifdef CONF_EN_HD44780
-	#define CONF_NO_DEBUG_PINS
+	//#define CONF_NO_DEBUG_PINS
 #endif
 
 // Debug output.
@@ -176,9 +177,6 @@ Supported MCUs:	ATmega48(-/A/P/AP), ATmega88(-/A/P/AP), ATmega168(-/A/P/AP), ATm
 //-------------------------------------- IO initialization.
 inline void HW_init(void)
 {
-	// Turn off not used devices for power saving.
-	PWR_COMP_OFF; PWR_ADC_OFF; PWR_T2_OFF;
-	
 	// Init SPI interface.
 #ifdef FGR_DRV_SPI_HW_FOUND
 	SPI_init_HW();
@@ -219,8 +217,13 @@ inline void HW_init(void)
 	
 	// Enable draw starting interrupts.
 	// INT0 tied to Timer1 compare output is used to re-configure PWM for H-sync.
-	INT0_CONFIG_PIN1; INT0_CONFIG_PIN2;
-	INT0_CONFIG_REG; INT0_EN;
+	//INT0_CONFIG_PIN1; INT0_CONFIG_PIN2;
+	//INT0_CONFIG_REG; INT0_EN;
+	PCICR |= (1<<PCIE0);
+	PCMSK0 |= (1<<PCINT1);
+
+	// Turn off not used devices for power saving.
+	PWR_COMP_OFF; PWR_ADC_OFF; PWR_T2_OFF;
 }
 
 #endif /* FGR_DRV_IO_MXX8_H_ */

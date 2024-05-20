@@ -35,6 +35,9 @@ Generation for:
 // Sync timing constants.
 enum
 {
+	H_STBL_DELAY			= 51,	// Delay to stabilize active region timing
+	A_STBL_DELAY			= 12,	// Delay to stabilize bar drawing
+	
 	COMP_ACT_DELAY_525i		= 89,	// (Tact) Timer value for start of active part of the line for composite 525i (~5.5us)
 	COMP_ACT_LEN_525i		= 103,	// (Tact) Duration of the active part of the line for composite 525i (front porch ~1.6us)
 	COMP_LINE_LEN_525i		= 1015,	// (Tsync) Line duration in field mode (normal line timing) for composite 525i (~63.5us)
@@ -51,13 +54,13 @@ enum
 	COMP_SYNC_H_LEN_625i	= 75,	// (Tsync) Duration of negative pulse for composite normal horizontal sync (~4.7us)
 	COMP_EQ_PULSE_LEN_625i	= 37,	// (Tsync) Duration of negative pulse for composite equalization pulses (~2.4us)
 	
-	EGA_ACT_DELAY			= 75,	// (Tact) Timer value for start of active part of the line for CGA/EGA
+	EGA_ACT_DELAY			= 73,	// (Tact) Timer value for start of active part of the line for CGA/EGA
 	EGA_ACT_LEN				= 85,	// (Tact) Duration of the active part of the line for CGA/EGA
 	EGA_LINE_LEN			= 1017,	// (Tsync) Line duration for CGA/EGA
 	EGA_SYNC_H_LEN			= 64,	// (Tsync) Duration of positive pulse for CGA/EGA vertical sync pulses
 	
-	VGA_ACT_DELAY			= 42,	// (Tact) Timer value for start of active part of the line for VGA 640x480 (~1.9us back porch)
-	VGA_ACT_LEN				= 49,	// (Tact) Duration of the active part of the line for VGA 640x480 (~25.5us)
+	VGA_ACT_DELAY			= 43,	// (Tact) Timer value for start of active part of the line for VGA 640x480 (~1.9us back porch)
+	VGA_ACT_LEN				= 47,	// (Tact) Duration of the active part of the line for VGA 640x480 (~25.5us)
 	VGA_LINE_LEN			= 507,	// (Tsync) Line duration for VGA 640x480 (~31.8us)
 	VGA_SYNC_H_LEN			= 60,	// (Tsync) Duration of negative pulse for VGA 640x480 vertical sync pulses (~3.8us)
 };

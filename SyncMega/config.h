@@ -30,8 +30,8 @@ Pre-compile configuration file.
 // Video sync generation available for all supported MCUs,
 // other options can/should be switched off.
 //#define CONF_NO_DEBUG_PINS			// Disable debugging pins
-#define CONF_EN_HD44780				// Enable support for character displays with HD44780/KS0066/สม1013ยร6/SPLC780 parallel controllers
-#define CONF_EN_I2C					// Enable support for I2C displays and expanders
+//#define CONF_EN_HD44780				// Enable support for character displays with HD44780/KS0066/สม1013ยร6/SPLC780 parallel controllers
+//#define CONF_EN_I2C					// Enable support for I2C displays and expanders
 #define CONF_EN_UART				// Enable support for UART displays testing
 
 #ifdef CONF_EN_HD44780
