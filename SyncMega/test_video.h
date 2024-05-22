@@ -36,7 +36,8 @@ Generation for:
 enum
 {
 	H_STBL_DELAY			= 51,	// Delay to stabilize active region timing
-	A_STBL_DELAY			= 12,	// Delay to stabilize bar drawing
+	A_MONO_STBL_DELAY		= 13,	// Delay to stabilize bar drawing (for monochrome output)
+	A_RGB_STBL_DELAY		= 8,	// Delay to stabilize bar drawing (for RGB output)
 	
 	COMP_ACT_DELAY_525i		= 89,	// (Tact) Timer value for start of active part of the line for composite 525i (~5.5us)
 	COMP_ACT_LEN_525i		= 103,	// (Tact) Duration of the active part of the line for composite 525i (front porch ~1.6us)

@@ -55,13 +55,13 @@ Supported MCUs:	ATmega48(-/A/P/AP), ATmega88(-/A/P/AP), ATmega168(-/A/P/AP), ATm
 
 // Feedback trigger for sync generated with Timer 1.
 // (INT0 starts 0.5us faster than Timer's own compare interrupt)
-#define INT0_INT			INT0_vect					// External INT0 interrupt vector alias
-#define INT0_CONFIG_REG		EICRA |= (1<<ISC01)			// Configure INT0 to trigger on falling edge
-#define INT0_EN				EIMSK |= (1<<INT0)			// Enable interrupt
-#define INT0_DIS			EIMSK &= ~(1<<INT0)			// Disable interrupt
-#define INT0_CLEAR_FLAG		EIFR |= (1<<INTF0)			// Clear INT0 trigger
-#define INT0_CONFIG_PIN1	DDRD &= ~(1<<2)				// INT0 input pin direction
-#define INT0_CONFIG_PIN2	PORTD |= (1<<2)				// INT0 input pin port
+#define SYNC_INT			INT0_vect					// External INT0 interrupt vector alias
+#define SYNC_INT_CFG_REG		EICRA |= (1<<ISC01)			// Configure INT0 to trigger on falling edge
+#define SYNC_INT_EN				EIMSK |= (1<<INT0)			// Enable interrupt
+#define SYNC_INT_DIS			EIMSK &= ~(1<<INT0)			// Disable interrupt
+#define SYNC_CLEAR_FLAG		EIFR |= (1<<INTF0)			// Clear INT0 trigger
+#define SYNC_IN_CFG_PIN1	DDRD &= ~(1<<2)				// INT0 input pin direction
+#define SYNC_IN_CFG_PIN2	PORTD |= (1<<2)				// INT0 input pin port
 
 // Video sync timing setup.
 #define SYNC_CONFIG_NEG		TCCR1A = (1<<COM1A1)|(1<<COM1A0)|(0<<COM1B1)|(0<<COM1B0)|(1<<WGM11)|(0<<WGM10)		// Enable Fast-PWM (negative pulse) with TOP = ICR1
@@ -217,10 +217,8 @@ inline void HW_init(void)
 	
 	// Enable draw starting interrupts.
 	// INT0 tied to Timer1 compare output is used to re-configure PWM for H-sync.
-	//INT0_CONFIG_PIN1; INT0_CONFIG_PIN2;
-	//INT0_CONFIG_REG; INT0_EN;
-	PCICR |= (1<<PCIE0);
-	PCMSK0 |= (1<<PCINT1);
+	SYNC_IN_CFG_PIN1; SYNC_IN_CFG_PIN2;
+	SYNC_INT_CFG_REG; SYNC_INT_EN;
 
 	// Turn off not used devices for power saving.
 	PWR_COMP_OFF; PWR_ADC_OFF; PWR_T2_OFF;

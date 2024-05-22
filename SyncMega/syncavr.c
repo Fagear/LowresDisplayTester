@@ -21,13 +21,12 @@ volatile uint8_t comp_data_idx = 0;					// Index for vertical bar groups.
 
 volatile const uint8_t ucaf_compile_date[] PROGMEM = __DATE__;		// Date of compilation
 volatile const uint8_t ucaf_compile_time[] PROGMEM = __TIME__;		// Time of compilation
-volatile const uint8_t ucaf_version[] PROGMEM = "v0.07";			// Firmware version
+volatile const uint8_t ucaf_version[] PROGMEM = "v0.08";			// Firmware version
 volatile const uint8_t ucaf_author[] PROGMEM = "Maksim Kryukov aka Fagear (fagear@mail.ru)";	// Author
 volatile const uint8_t ucaf_info[] PROGMEM = "ATmega sync gen/display tester";					// Firmware description
 
 //-------------------------------------- Video sync timing (horizontal/composite), active region timing management (each H-line).
-//ISR(INT0_INT)
-ISR(PCINT0_vect)
+ISR(SYNC_INT)
 {	
 	/*if(frame_line_cnt==(dbg_index-1))
 	{
@@ -38,7 +37,7 @@ ISR(PCINT0_vect)
 	}*/
 	// Stabilize active region.
 	while(SYNC_DATA_8B<H_STBL_DELAY) {}
-	DBG_2_ON;
+	//DBG_2_ON;
 #ifdef FGR_DRV_IO_T0OC_HW_FOUND
 	// Check if current line is in vertical active region.
 	if(active_region==0)
@@ -334,21 +333,25 @@ ISR(PCINT0_vect)
 		// Set new maximum step count and pulse polarity for selected video mode.
 		if(video_sys==MODE_VGA_60Hz)
 		{
+			// Negative pulse horizontal sync for VGA.
 			SYNC_CONFIG_NEG;
 			sync_step_limit = LINES_VGA;
 		}
 		else if(video_sys==MODE_EGA)
 		{
+			// Positive pulse horizontal sync for CGA/EGA.
 			SYNC_CONFIG_POS;
 			sync_step_limit = LINES_EGA;
 		}
 		else if(video_sys==MODE_COMP_525i)
 		{
+			// Negative pulse composite sync for 525i30.
 			SYNC_CONFIG_NEG;
 			sync_step_limit = ST_COMP525_LOOP;
 		}
 		else if(video_sys==MODE_COMP_625i)
 		{
+			// Negative pulse composite sync for 625i25.
 			SYNC_CONFIG_NEG;
 			sync_step_limit = ST_COMP625_LOOP;
 		}
@@ -360,8 +363,7 @@ ISR(PCINT0_vect)
 #endif /* FGR_DRV_IO_T0OC_HW_FOUND */
 		DBG_1_OFF;
 	}
-	PCIFR |= (1<<PCIF0);
-	DBG_2_OFF;
+	//DBG_2_OFF;
 }
 
 #ifdef FGR_DRV_IO_T0OC_HW_FOUND
@@ -372,11 +374,12 @@ ISR(LACT_COMP_INT)
 	// Disable interrupt for the end of the line (to prevent shifting H-sync interrupt).
 	LACT_DIS_INTR;
 #ifdef FGR_DRV_SPI_HW_FOUND
-	while(LACT_DATA<A_STBL_DELAY) {}
 	// Start drawing patterns.
-	comp_data_idx = 0;
 	if((active_region&ACT_MN_LINES)!=0)
+	//if(active_region!=0)
 	{
+		// Stabilize bar drawing.
+		while(LACT_DATA<A_MONO_STBL_DELAY) {}
 		// Set minimal frequency for first set of vertical bars.
 		//SPI_set_target_clock(BAR_FREQ_500Hz);
 		SPI_CONTROL &= ~(1<<SPR0);
@@ -387,6 +390,8 @@ ISR(LACT_COMP_INT)
 	}
 	else if((active_region&ACT_RGB_LINES)!=0)
 	{
+		// Stabilize bar drawing.
+		while(LACT_DATA<A_RGB_STBL_DELAY) {}
 		//SPI_set_target_clock(BAR_FREQ_1MHz);
 		SPI_CONTROL |= (1<<SPR0);
 		SPI_CONTROL &= ~(1<<SPR1);
@@ -395,6 +400,7 @@ ISR(LACT_COMP_INT)
 		SPI_DATA = SPI_DUMMY_SEND;
 	}
 #endif
+	comp_data_idx = 0;
 	DBG_3_OFF;
 }
 #endif
@@ -427,17 +433,8 @@ ISR(SPI_INT)
 			// Send a byte to generate clock for bars.
 			SPI_DATA = SPI_DUMMY_SEND;
 		}
-		else if(comp_data_idx==3)
-		{
-			// 4 MHz.
-			//SPI_set_target_clock(BAR_FREQ_4MHz);
-			SPI_CONTROL &= ~((1<<SPR1)|(1<<SPR0));
-			SPI_STATUS &= ~(1<<SPI2X);
-			// Send a byte to generate clock for bars.
-			SPI_DATA = SPI_DUMMY_SEND;
-		}
 	}
-	else if((active_region&ACT_RGB_LINES)!=0)
+	/*else if((active_region&ACT_RGB_LINES)!=0)
 	{
 		if(comp_data_idx==1)
 		{
@@ -449,7 +446,7 @@ ISR(SPI_INT)
 			// Send a byte to generate clock for bars.
 			SPI_DATA = SPI_DUMMY_SEND;
 		}
-	}
+	}*/
 }
 #endif /* FGR_DRV_SPI_HW_FOUND */
 
@@ -637,8 +634,9 @@ int main(void)
 	uint8_t div_sec = 0;
 	uint8_t tasks_buf = 0;
 	uint8_t seconds_top = FPS_COMP525;
+#ifdef FGR_DRV_I2C_HW_FOUND
 	uint8_t i2c_addr = 0x02;
-	
+#endif
 	//dbg_index = 1;
 	//dbg_index = 305;
 	//dbg_index = 315;
