@@ -56,9 +56,9 @@ Supported MCUs:	ATmega48(-/A/P/AP), ATmega88(-/A/P/AP), ATmega168(-/A/P/AP), ATm
 // Feedback trigger for sync generated with Timer 1.
 // (INT0 starts 0.5us faster than Timer's own compare interrupt)
 #define SYNC_INT			INT0_vect					// External INT0 interrupt vector alias
-#define SYNC_INT_CFG_REG		EICRA |= (1<<ISC01)			// Configure INT0 to trigger on falling edge
-#define SYNC_INT_EN				EIMSK |= (1<<INT0)			// Enable interrupt
-#define SYNC_INT_DIS			EIMSK &= ~(1<<INT0)			// Disable interrupt
+#define SYNC_INT_CFG_REG	EICRA |= (1<<ISC01)			// Configure INT0 to trigger on falling edge
+#define SYNC_INT_EN			EIMSK |= (1<<INT0)			// Enable interrupt
+#define SYNC_INT_DIS		EIMSK &= ~(1<<INT0)			// Disable interrupt
 #define SYNC_CLEAR_FLAG		EIFR |= (1<<INTF0)			// Clear INT0 trigger
 #define SYNC_IN_CFG_PIN1	DDRD &= ~(1<<2)				// INT0 input pin direction
 #define SYNC_IN_CFG_PIN2	PORTD |= (1<<2)				// INT0 input pin port
@@ -109,6 +109,13 @@ Supported MCUs:	ATmega48(-/A/P/AP), ATmega88(-/A/P/AP), ATmega168(-/A/P/AP), ATm
 #define HD44780_D7			(1<<3)
 #endif /* CONF_EN_HD44780 */
 
+#ifdef FGR_DRV_UART_HW_FOUND
+// UART busy pin.
+#define UART_BUSY_DIR		DDRD
+#define UART_BUSY_PORT		PORTD
+#define UART_BUSY_PIN		(1<<4)
+#endif	/* FGR_DRV_UART_HW_FOUND */
+
 // Watchdog setup.
 #define WDT_RESET_DIS		MCUSR &= ~(1<<WDRF)									// Clear Watchdog System Reset Flag to prevent boot-loop on unhandled Watchdog reset
 #define WDT_PREP_OFF		WDTCSR |= (1<<WDCE)|(1<<WDE)						// Prepare to turn Watchdog OFF
@@ -140,13 +147,8 @@ Supported MCUs:	ATmega48(-/A/P/AP), ATmega88(-/A/P/AP), ATmega168(-/A/P/AP), ATm
 	#define DBG_OUT2			(1<<1)
 	#define DBG_OUT3			(1<<2)
 	#define DBG_OUT4			(1<<3)
-	#define DBG_PORT2			PORTB
-	#define DBG_DIR2			DDRB
-	#define DBG_OUT5			(1<<0)
 	#define DBG_SETUP1			DBG_PORT1 &= ~(DBG_OUT1|DBG_OUT2|DBG_OUT3|DBG_OUT4)
 	#define DBG_SETUP2			DBG_DIR1 |= (DBG_OUT1|DBG_OUT2|DBG_OUT3|DBG_OUT4)
-	#define DBG_SETUP3			DBG_PORT2 &= ~(DBG_OUT5)
-	#define DBG_SETUP4			DBG_DIR2 |= (DBG_OUT5)
 	#define DBG_1_ON			DBG_PORT1 |= DBG_OUT1
 	#define DBG_1_OFF			DBG_PORT1 &= ~DBG_OUT1
 	#define DBG_2_ON			DBG_PORT1 |= DBG_OUT2
@@ -155,13 +157,9 @@ Supported MCUs:	ATmega48(-/A/P/AP), ATmega88(-/A/P/AP), ATmega168(-/A/P/AP), ATm
 	#define DBG_3_OFF			DBG_PORT1 &= ~DBG_OUT3
 	#define DBG_4_ON			DBG_PORT1 |= DBG_OUT4
 	#define DBG_4_OFF			DBG_PORT1 &= ~DBG_OUT4
-	#define DBG_5_ON			DBG_PORT2 |= DBG_OUT5
-	#define DBG_5_OFF			DBG_PORT2 &= ~DBG_OUT5
 #else
 	#define DBG_SETUP1
 	#define DBG_SETUP2
-	#define DBG_SETUP3
-	#define DBG_SETUP4
 	#define DBG_1_ON
 	#define DBG_1_OFF
 	#define DBG_2_ON
@@ -170,8 +168,6 @@ Supported MCUs:	ATmega48(-/A/P/AP), ATmega88(-/A/P/AP), ATmega168(-/A/P/AP), ATm
 	#define DBG_3_OFF
 	#define DBG_4_ON
 	#define DBG_4_OFF
-	#define DBG_5_ON
-	#define DBG_5_OFF
 #endif /* CONF_NO_DEBUG_PINS */
 
 //-------------------------------------- IO initialization.
@@ -192,7 +188,7 @@ inline void HW_init(void)
 #endif /* FGR_DRV_I2C_HW_FOUND */
 	
 	// Enable debug pins.
-	DBG_SETUP1; DBG_SETUP2; DBG_SETUP3; DBG_SETUP4;
+	DBG_SETUP1; DBG_SETUP2;
 	
 	// Set inputs.
 	BTN_SETUP1; BTN_SETUP2; BTN_SETUP3; BTN_SETUP4;
