@@ -2,7 +2,8 @@
 
 ## What is this?
 
-**LowresDisplayTester** is firmware for AVR MCUs that enables creation of low-part-count and low-cost video generator (sync generator/black burst generator/genlock) device.
+**LowresDisplayTester** is the firmware for AVR MCUs that enables creation of low-part-count and low-cost video generator (sync generator/black burst generator/genlock) device.
+It also can be used as a rudimentary pattern generator, but not very stable one. Pattern generation can be disabled via a jumper on the PCB.
 
 ## Features
 
@@ -13,15 +14,15 @@
 
 ## Video outputs
 
-- 525i/29.97 NTSC (no color)
-- 625i/25 PAL/SECAM (no color)
-- 640x480 60Hz VGA
-- 640x200 60Hz CGA/EGA
+- 525i/29.97 composite (NTSC no color, black level fill + white vertical bars)
+- 625i/25 composite (PAL/SECAM no color, black level fill + white vertical bars)
+- 640x480 60Hz VGA (blue fill + orange vertical bars)
+- 640x200 60Hz CGA/EGA (blue fill + cyan/magenta vertical bars)
 
 Only one video standard can be selected at any time.
 
 ## Display ports
-- HD44780-compatible (HD44780/KS0066/КБ1013ВГ6/PT6314/SPLC780/US2066) character display port with 4-bit data bus
+- HD44780-compatible (HD44780/KS0066/КБ1013ВГ6/PT6314/SPLC780/US2066/etc.) character display port with 8-bit paraller data bus (used in 4-bit mode)
 
 ## Usage
 
@@ -36,7 +37,6 @@ Fuses for **ATmega328P** with *16 MHz Xtal*:
 - **SUT0** = 0
 - **CKSEL3** = 0
 - **SPIEN** = 0
-- **EESAVE** = 0
 - **BODLEVEL1** = 0
 - **BODLEVEL0** = 0
 - all other at "1"
@@ -47,14 +47,62 @@ In hex form:
 - extended byte: **0xFC**
 </details>
 
-Due to high clock and dependance of output analog levels on logic levels MCU should be run on voltages from **4.1 V** to **5.0 V**.
+Due to high clock and dependance of output analog levels on logic levels MCU should be run on voltages from **4.1 V** to **5.0 V**. Thus BOD (Brown-out Detector) is enabled by MCU fuses.
 
 <details>
-<summary>Pinout for ATmega 48/88/168/328 MCU</summary>
+<summary>Pinout for ATmega 168/328 MCU in SMD packages</summary>
+
+Power supply:
+- **pin 4** *(VCC)*: +5 V supply
+- **pin 6** *(VCC)*: +5 V supply
+- **pin 18** *(AVCC)*: +5 V supply
+- **pin 20** *(AREF)*: +5 V reference
+- **pin 3** *(GND)*: 0 V (common)
+- **pin 5** *(GND)*: 0 V (common)
+- **pin 21** *(GND)*: 0 V (common)
+
+Clock input:
+- **pin 7** *(PB6)*: 16.0 MHz Xtal
+- **pin 8** *(PB7)*: 16.0 MHz Xtal
+
+User input:
+- **pin 12** *(PB0)*: (input) ***video select*** switch, bit 0
+- **pin 16** *(PB4)*: (input) ***video select*** switch, bit 1
+
+Video output:
+- **pin 13** *(PB1)*: (output) composite/horizontal ***sync output***
+- **pin 32** *(PD2)*: (input) sync input (loopback from *pin 15* through a jumper) for additional timing
+- **pin 10** *(PD6)*: (output) line ***active part*** signal output
+- **pin 14** *(PB2)*: (output) ***vertical sync*** output
+- **pin 17** *(PB5)*: (output) ***bar pattern*** output
+
+HD44780-compatible character display parallel port:
+- **pin 1** *(PD3)*: (output) ***HD44780 E*** (operation enable)
+- **pin 9** *(PD5)*: (output) ***HD44780 R/W*** (read/write select)
+- **pin 11** *(PD7)*: (output) ***HD44780 RS*** (command/data select)
+- **pin 23** *(PC0)*: (input/output) ***HD44780 D4*** (data bit 4)
+- **pin 24** *(PC1)*: (input/output) ***HD44780 D5*** (data bit 5)
+- **pin 25** *(PC2)*: (input/output) ***HD44780 D6*** (data bit 6)
+- **pin 26** *(PC3)*: (input/output) ***HD44780 D7*** (data bit 7)
+
+I2C displays serial port:
+- **pin 27** *(PC4)*: (input/output) ***I2C data***
+- **pin 28** *(PC5)*: (output) ***I2C clock***
+
+UART displays serial port:
+- **pin 30** *(PD0)*: (input) ***UART data RX*** from display
+- **pin 31** *(PD1)*: (output) ***UART data TX*** to display
+- **pin 2** *(PD4)*: (input) ***Busy*** signal from display
+
+</details>
+
+<details>
+<summary>Pinout for ATmega 168/328 MCU in DIP packages</summary>
 
 Power supply:
 - **pin 7** *(VCC)*: +5 V supply
 - **pin 20** *(AVCC)*: +5 V supply
+- **pin 21** *(AREF)*: +5 V reference
 - **pin 8** *(GND)*: 0 V (common)
 - **pin 22** *(GND)*: 0 V (common)
 
@@ -68,7 +116,7 @@ User input:
 
 Video output:
 - **pin 15** *(PB1)*: (output) composite/horizontal ***sync output***
-- **pin 4** *(PD2)*: (input) sync input (loopback from *pin 15*) for additional timing
+- **pin 4** *(PD2)*: (input) sync input (loopback from *pin 15* through a jumper) for additional timing
 - **pin 12** *(PD6)*: (output) line ***active part*** signal output
 - **pin 16** *(PB2)*: (output) ***vertical sync*** output
 - **pin 19** *(PB5)*: (output) ***bar pattern*** output
@@ -89,11 +137,57 @@ I2C displays serial port:
 UART displays serial port:
 - **pin 2** *(PD0)*: (input) ***UART data RX*** from display
 - **pin 3** *(PD1)*: (output) ***UART data TX*** to display
+- **pin 6** *(PD4)*: (input) ***Busy*** signal from display
+
+</details>
+
+<details>
+<summary>Pinout for ATmega 16/32 MCU in DIP packages</summary>
+
+Power supply:
+- **pin 10** *(VCC)*: +5 V supply
+- **pin 30** *(AVCC)*: +5 V supply
+- **pin 32** *(AREF)*: +5 V reference
+- **pin 11** *(GND)*: 0 V (common)
+- **pin 31** *(GND)*: 0 V (common)
+
+Clock input:
+- **pin 12** *(XTAL2)*: 16.0 MHz Xtal
+- **pin 13** *(XTAL1)*: 16.0 MHz Xtal
+
+User input:
+- **pin 29** *(PC7)*: (input) ***video select*** switch, bit 0
+- **pin 28** *(PC6)*: (input) ***video select*** switch, bit 1
+
+Video output:
+- **pin 19** *(PD5)*: (output) composite/horizontal ***sync output***
+- **pin 16** *(PD2)*: (input) sync input (loopback from *pin 19* through a jumper) for additional timing
+- **pin 4** *(PB3)*: (output) line ***active part*** signal output
+- **pin 20** *(PD6)*: (output) ***vertical sync*** output
+- **pin 8** *(PB7)*: (output) ***bar pattern*** output
+
+HD44780-compatible character display parallel port:
+- **pin 35** *(PA5)*: (output) ***HD44780 E*** (operation enable)
+- **pin 34** *(PA6)*: (output) ***HD44780 R/W*** (read/write select)
+- **pin 33** *(PA7)*: (output) ***HD44780 RS*** (command/data select)
+- **pin 37** *(PA3)*: (input/output) ***HD44780 D4*** (data bit 4)
+- **pin 38** *(PA2)*: (input/output) ***HD44780 D5*** (data bit 5)
+- **pin 39** *(PA1)*: (input/output) ***HD44780 D6*** (data bit 6)
+- **pin 40** *(PA0)*: (input/output) ***HD44780 D7*** (data bit 7)
+
+I2C displays serial port:
+- **pin 23** *(PC1)*: (input/output) ***I2C data***
+- **pin 22** *(PC0)*: (output) ***I2C clock***
+
+UART displays serial port:
+- **pin 14** *(PD0)*: (input) ***UART data RX*** from display
+- **pin 15** *(PD1)*: (output) ***UART data TX*** to display
+- **pin 18** *(PD4)*: (input) ***Busy*** signal from display
 
 </details>
 
 > [!NOTE]
-> "*Capstan motor drive*" is optional and can be left disconnected.
+> Only one of the display output connectors should be used at any time.
 
 ## Demo
 
@@ -108,6 +202,7 @@ UART displays serial port:
 - Update I2C driver to working state
 - Write driver for character displays with I2C bus
 - Write driver for UART Futaba character displays
+- Write driver for UART terminal (?)
 - Maybe add support for graphical displays
 
 ## License

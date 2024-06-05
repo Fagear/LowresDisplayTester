@@ -2,14 +2,12 @@
 
 volatile uint8_t tasks = 0;							// System tasks.
 uint8_t usr_video = MODE_COMP_525i;					// Video system value set by user.
-uint8_t usr_act_delay = COMP_ACT_DELAY_525i;		// Line active part start delay from H-sync for user-selected video system.
-uint8_t usr_act_time = COMP_ACT_LEN_525i;			// Line active part duration for user-selected video system.
 uint8_t disp_presence = 0;							// Flags for detected displays types.
 uint8_t i2c_40_range = 0;							// Flags for I2C devices in 0x40...0x4E range.
 uint8_t i2c_70_range = 0;							// Flags for I2C devices in 0x70...0x7E range.
 uint8_t i2c_E0_range = 0;							// Flags for I2C devices in 0xE0...0xEE range.
 uint8_t active_region = 0;							// Flags for lines in active region.
-uint8_t act_delay = COMP_ACT_DELAY_525i;			// Line active part start delay from H-sync (for clearing interrupt from IFs).
+uint8_t act_delay = 0;								// Line active part start delay from H-sync (for clearing interrupt from IFs).
 uint16_t sync_step_cnt = 0;							// Current step in sync generator logic.
 uint16_t sync_step_limit = 0;						// Maximum step number for selected video system.
 uint16_t frame_line_cnt = 0;						// Number of current line in the frame.
@@ -21,7 +19,7 @@ volatile uint8_t comp_data_idx = 0;					// Index for vertical bar groups.
 
 volatile const uint8_t ucaf_compile_date[] PROGMEM = __DATE__;		// Date of compilation
 volatile const uint8_t ucaf_compile_time[] PROGMEM = __TIME__;		// Time of compilation
-volatile const uint8_t ucaf_version[] PROGMEM = "v0.08";			// Firmware version
+volatile const uint8_t ucaf_version[] PROGMEM = "v0.09";			// Firmware version
 volatile const uint8_t ucaf_author[] PROGMEM = "Maksim Kryukov aka Fagear (fagear@mail.ru)";	// Author
 volatile const uint8_t ucaf_info[] PROGMEM = "ATmega sync gen/display tester";					// Firmware description
 
@@ -31,33 +29,31 @@ ISR(SYNC_INT)
 	/*if(frame_line_cnt==(dbg_index-1))
 	{
 		// Produce pulse for selected video line.
-		DBG_5_ON;
+		DBG_4_ON;
 		__builtin_avr_delay_cycles(1);
-		DBG_5_OFF;
+		DBG_4_OFF;
 	}*/
 	// Stabilize active region.
-	while(SYNC_DATA_8B<H_STBL_DELAY) {}
-	//DBG_2_ON;
-#ifdef FGR_DRV_IO_T0OC_HW_FOUND
+	DBG_2_ON;
+	while(SYNC_DATA_8B<H_STBL_DELAY) {};
+	DBG_2_OFF;
+	// Start line active part end timer.
+	//LACT_START; LACT_DATA = act_delay;
+	
 	// Check if current line is in vertical active region.
-	if(active_region==0)
+	if((active_region&ACT_RUN)!=0)
 	{
-		// Disable line active part interrupt inside VBI.
-		LACT_DIS_INTR;
+		// Enable active part of the line highlighting.
+		HACT_ON;
 	}
 	else
 	{
-		// Shift PWM cycle to align with H-sync.
-		LACT_DATA = act_delay;
-		// Force OC pin low at the start of H-sync.
-		LACT_OC_DIS; LACT_OC_CLEAR;
-		LACT_OC_FORCE;
-		// Switch to "Toggle OC pin on compare" to allow pin to be switched HIGH on the next compare after H-sync.
-		LACT_OC_DIS; LACT_OC_TOGGLE;
-		// Enable interrupt to start drawing at the beginning of active range.
-		LACT_EN_INTR;
+		// Disable active part of the line highlighting.
+		HACT_OFF;
+		// Disable line active part interrupt inside VBI.
+		LACT_DIS_INTR;
 	}
-#endif	/* FGR_DRV_IO_T0OC_HW_FOUND */
+		
 	// Line-by-line sync and timing management.
 	if(video_sys==MODE_VGA_60Hz)
 	{
@@ -74,12 +70,6 @@ ISR(SYNC_INT)
 			VSYNC_PULL_UP;
 		}
 		// Continue with H-stepping.
-		else if(sync_step_cnt==VGA_HS_START)
-		{
-			// Horizontal sync pulse period/length.
-			SYNC_STEP_DUR = VGA_LINE_LEN;
-			SYNC_PULSE_DUR = VGA_SYNC_H_LEN;
-		}
 		else if(sync_step_cnt==VGA_BP_STOP)
 		{
 			// Enable drawing in active region.
@@ -106,16 +96,10 @@ ISR(SYNC_INT)
 			VSYNC_PULL_DOWN;
 		}
 		// Continue with H-stepping.
-		else if(sync_step_cnt==EGA_HS_START)
-		{
-			// Horizontal sync pulse period/length.
-			SYNC_STEP_DUR = EGA_LINE_LEN;
-			SYNC_PULSE_DUR = EGA_SYNC_H_LEN;
-		}
 		else if(sync_step_cnt==EGA_BP_STOP)
 		{
 			// Enable drawing in active region.
-			active_region |= (ACT_RUN|ACT_RGB_LINES);
+			active_region |= (ACT_RUN|ACT_MN_LINES);
 		}
 		else if(sync_step_cnt==EGA_FP_START)
 		{
@@ -144,10 +128,20 @@ ISR(SYNC_INT)
 				// Frame (vertical) sync.
 				SYNC_PULSE_DUR = COMP_SYNC_V_LEN_525i;
 			}
+			else if(sync_step_cnt==ST_COMP525_F1_VS_PLS1)
+			{
+				// Optional vertical sync at dedicated pin.
+				VSYNC_PULL_DOWN;
+			}
 			else if(sync_step_cnt==ST_COMP525_F1_VS_STOP)
 			{
 				// Post-equalizing pulses.
 				SYNC_PULSE_DUR = COMP_EQ_PULSE_LEN_525i;
+			}
+			else if(sync_step_cnt==ST_COMP525_F1_VS_PLS2)
+			{
+				// Optional vertical sync (end) at dedicated pin.
+				VSYNC_PULL_UP;
 			}
 			else if(sync_step_cnt==ST_COMP525_F1_EQ_STOP)
 			{
@@ -174,10 +168,20 @@ ISR(SYNC_INT)
 				// Frame (vertical) sync.
 				SYNC_PULSE_DUR = COMP_SYNC_V_LEN_525i;
 			}
+			else if(sync_step_cnt==ST_COMP525_F2_VS_PLS1)
+			{
+				// Optional vertical sync at dedicated pin.
+				VSYNC_PULL_DOWN;
+			}
 			else if(sync_step_cnt==ST_COMP525_F2_VS_STOP)
 			{
 				// Post-equalizing pulses.
 				SYNC_PULSE_DUR = COMP_EQ_PULSE_LEN_525i;
+			}
+			else if(sync_step_cnt==ST_COMP525_F2_VS_PLS2)
+			{
+				// Optional vertical sync (end) at dedicated pin.
+				VSYNC_PULL_UP;
 			}
 		}
 		else
@@ -221,10 +225,20 @@ ISR(SYNC_INT)
 		if((sync_step_cnt>=ST_COMP625_F2_EQ_START)||(sync_step_cnt<=ST_COMP625_F1_EQ_STOP))
 		{
 			// First field vertical sync.
-			if(sync_step_cnt==ST_COMP625_F1_VS_STOP)
+			if(sync_step_cnt==ST_COMP625_F1_VS_PLS1)
+			{
+				// Optional vertical sync at dedicated pin.
+				VSYNC_PULL_DOWN;
+			}
+			else if(sync_step_cnt==ST_COMP625_F1_VS_STOP)
 			{
 				// Post-equalizing pulses.
 				SYNC_PULSE_DUR = COMP_EQ_PULSE_LEN_625i;
+			}
+			else if(sync_step_cnt==ST_COMP625_F1_VS_PLS2)
+			{
+				// Optional vertical sync (end) at dedicated pin.
+				VSYNC_PULL_UP;
 			}
 			else if(sync_step_cnt==ST_COMP625_F1_EQ_STOP)
 			{
@@ -261,10 +275,20 @@ ISR(SYNC_INT)
 				// Frame (vertical) sync.
 				SYNC_PULSE_DUR = COMP_SYNC_V_LEN_625i;
 			}
+			else if(sync_step_cnt==ST_COMP625_F2_VS_PLS1)
+			{
+				// Optional vertical sync at dedicated pin.
+				VSYNC_PULL_DOWN;
+			}
 			else if(sync_step_cnt==ST_COMP625_F2_VS_STOP)
 			{
 				// Post-equalizing pulses.
 				SYNC_PULSE_DUR = COMP_EQ_PULSE_LEN_625i;
+			}
+			else if(sync_step_cnt==ST_COMP625_F2_VS_PLS2)
+			{
+				// Optional vertical sync (end) at dedicated pin.
+				VSYNC_PULL_UP;
 			}
 			if((sync_step_cnt%2)==0)
 			{
@@ -306,15 +330,6 @@ ISR(SYNC_INT)
 			active_region = 0;
 		}
 	}
-#ifdef FGR_DRV_IO_T0OC_HW_FOUND
-	// This part moved from time critical stuff at the top.
-	// Check if current line is in vertical active region.
-	if(active_region==0)
-	{
-		// Disable active line pin.
-		LACT_OC_DIS;
-	}
-#endif /* FGR_DRV_IO_T0OC_HW_FOUND */
 
 	// Go through steps.
 	tasks &= ~TASK_UPDATE_ASYNC;
@@ -322,12 +337,7 @@ ISR(SYNC_INT)
 	if(sync_step_cnt>sync_step_limit)
 	{
 		// New frame starts.
-		DBG_1_ON;
-		// Loop line counter within one frame.
-		frame_line_cnt = 0;
-		sync_step_cnt = 0;
-		// Set flag for slow events in the main loop.
-		tasks |= TASK_UPDATE_ASYNC;
+		//DBG_1_ON;
 		// Update video system to user's choice.
 		video_sys = usr_video;
 		// Set new maximum step count and pulse polarity for selected video mode.
@@ -336,50 +346,58 @@ ISR(SYNC_INT)
 			// Negative pulse horizontal sync for VGA.
 			SYNC_CONFIG_NEG;
 			sync_step_limit = LINES_VGA;
+			// Horizontal sync pulse period/length.
+			SYNC_STEP_DUR = VGA_LINE_LEN;
+			SYNC_PULSE_DUR = VGA_SYNC_H_LEN;
+			// Active part length.
+			HACT_PULSE_DUR = VGA_ACT_DELAY;
 		}
 		else if(video_sys==MODE_EGA)
 		{
 			// Positive pulse horizontal sync for CGA/EGA.
 			SYNC_CONFIG_POS;
 			sync_step_limit = LINES_EGA;
+			// Horizontal sync pulse period/length.
+			SYNC_STEP_DUR = EGA_LINE_LEN;
+			SYNC_PULSE_DUR = EGA_SYNC_H_LEN;
+			// Active part length.
+			HACT_PULSE_DUR = EGA_ACT_DELAY;
+			//LACT_PULSE_DUR = 254; act_delay = 148;
 		}
 		else if(video_sys==MODE_COMP_525i)
 		{
 			// Negative pulse composite sync for 525i30.
 			SYNC_CONFIG_NEG;
 			sync_step_limit = ST_COMP525_LOOP;
+			// Active part length.
+			HACT_PULSE_DUR = COMP_ACT_DELAY_525i;
+			//LACT_PULSE_DUR = 254; act_delay = 148;
 		}
 		else if(video_sys==MODE_COMP_625i)
 		{
 			// Negative pulse composite sync for 625i25.
 			SYNC_CONFIG_NEG;
 			sync_step_limit = ST_COMP625_LOOP;
+			// Active part length.
+			HACT_PULSE_DUR = COMP_ACT_DELAY_625i;
+			//LACT_PULSE_DUR = 254; act_delay = 149;
 		}
-#ifdef FGR_DRV_IO_T0OC_HW_FOUND
-		// Apply delay for the active part for the H-sync.
-		act_delay = usr_act_delay;
-		// Apply length of the active part of the line.
-		LACT_PULSE_DUR = usr_act_time;
-#endif /* FGR_DRV_IO_T0OC_HW_FOUND */
-		DBG_1_OFF;
+		// Loop line counter within one frame.
+		frame_line_cnt = 0;
+		sync_step_cnt = 0;
+		active_region = 0;
+		// Set flag for slow events in the main loop.
+		tasks |= TASK_UPDATE_ASYNC;
+		//DBG_1_OFF;
 	}
-	//DBG_2_OFF;
-}
-
-#ifdef FGR_DRV_IO_T0OC_HW_FOUND
-//-------------------------------------- Horizontal line active part timing.
-ISR(LACT_COMP_INT)
-{
-	DBG_3_ON;
-	// Disable interrupt for the end of the line (to prevent shifting H-sync interrupt).
-	LACT_DIS_INTR;
-#ifdef FGR_DRV_SPI_HW_FOUND
+	// Reset bar index.
+	comp_data_idx = 0;
 	// Start drawing patterns.
 	if((active_region&ACT_MN_LINES)!=0)
-	//if(active_region!=0)
 	{
 		// Stabilize bar drawing.
-		while(LACT_DATA<A_MONO_STBL_DELAY) {}
+		while(SYNC_DATA_8B<A_MONO_STBL_DELAY) {};
+		DBG_3_ON;
 		// Set minimal frequency for first set of vertical bars.
 		//SPI_set_target_clock(BAR_FREQ_500Hz);
 		SPI_CONTROL &= ~(1<<SPR0);
@@ -387,23 +405,50 @@ ISR(LACT_COMP_INT)
 		SPI_STATUS = (1<<SPI2X);
 		// Start drawing first set of vertical bars.
 		SPI_DATA = SPI_DUMMY_SEND;
+		DBG_3_OFF;
 	}
 	else if((active_region&ACT_RGB_LINES)!=0)
 	{
 		// Stabilize bar drawing.
-		while(LACT_DATA<A_RGB_STBL_DELAY) {}
+		while(SYNC_DATA_8B<A_RGB_STBL_DELAY) {};
+		DBG_3_ON;
 		//SPI_set_target_clock(BAR_FREQ_1MHz);
 		SPI_CONTROL |= (1<<SPR0);
 		SPI_CONTROL &= ~(1<<SPR1);
 		SPI_STATUS &= ~(1<<SPI2X);
 		// Start drawing first set of vertical bars.
 		SPI_DATA = SPI_DUMMY_SEND;
+		DBG_3_OFF;
 	}
-#endif
-	comp_data_idx = 0;
-	DBG_3_OFF;
 }
-#endif
+
+//-------------------------------------- Horizontal line active part timing (turn off "active" signal).
+ISR(LACT_COMP_INT)
+{
+	//DBG_3_ON;
+	
+	// Turn off active part output.
+	HACT_OFF;
+	
+	//DBG_3_OFF;
+}
+
+//-------------------------------------- Horizontal line active part timing (re-arm "active" signal).
+ISR(LACT_OVF_INT)
+{
+	DBG_4_ON;
+	
+	// Timer self-shutdown.
+	LACT_STOP;
+	
+	if(active_region!=0)
+	{
+		// Re-arm active part output.
+		HACT_ON;
+	}
+	
+	DBG_4_OFF;
+}
 
 #ifdef FGR_DRV_SPI_HW_FOUND
 //-------------------------------------- Vertical bars batch.
@@ -503,9 +548,7 @@ inline void system_startup(void)
 	SYNC_STEP_DUR = COMP_HALF_LEN_525i;			// Load duration of the H-cycle.
 	SYNC_PULSE_DUR = COMP_SYNC_V_LEN_525i;		// Load duration of the H-pulse.
 	SYNC_DATA = 0;
-#ifdef FGR_DRV_IO_T0OC_HW_FOUND
 	LACT_DATA = 0;
-#endif /* FGR_DRV_IO_T0OC_HW_FOUND */
 #ifdef FGR_DRV_UART_HW_FOUND
 	UART_enable();
 	UART_set_speed(UART_BAUD_9600);
@@ -590,35 +633,27 @@ uint8_t select_video_std(void)
 		{
 			// Select CGA/EGA 60Hz.
 			usr_video = MODE_EGA;
-			usr_act_delay = EGA_ACT_DELAY;
-			usr_act_time = EGA_ACT_LEN;
 			fps = FPS_EGA;
 		}
 		else
 		{
 			// Select VGA 640x480@60.
 			usr_video = MODE_VGA_60Hz;
-			usr_act_delay = VGA_ACT_DELAY;
-			usr_act_time = VGA_ACT_LEN;
 			fps = FPS_VGA;
 		}
 	}
 	else
 	{
-		if((kbd_state&SW_VID_SYS1)!=0)
+		if((kbd_state&SW_VID_SYS1)==0)
 		{
 			// Select composite 525i.
 			usr_video = MODE_COMP_525i;
-			usr_act_delay = COMP_ACT_DELAY_525i;
-			usr_act_time = COMP_ACT_LEN_525i;
 			fps = FPS_COMP525;
 		}
 		else
 		{
 			// Select composite 625i.
 			usr_video = MODE_COMP_625i;
-			usr_act_delay = COMP_ACT_DELAY_625i;
-			usr_act_time = COMP_ACT_LEN_625i;
 			fps = FPS_COMP625;
 		}
 	}
@@ -654,6 +689,8 @@ int main(void)
 	
 	// Enable interrupts globally.
 	sei();
+	// Later enabling of sync interrupt makes more straight bars.
+	SYNC_INT_EN;
 	// Main cycle.
 	while(1)
 	{
@@ -664,7 +701,7 @@ int main(void)
 		if((tasks_buf&TASK_UPDATE_ASYNC)!=0)
 		{
 			tasks_buf &= ~TASK_UPDATE_ASYNC;
-			DBG_4_ON;
+			//DBG_4_ON;
 			// Scan switches with debounce.
 			keys_simple_scan();
 			// Update video standard.
@@ -764,7 +801,7 @@ int main(void)
 #endif /* CONF_EN_HD44780 */
 			// Clear processed tasks.
 			tasks_buf &= ~TASK_SEC_TICK;
-			DBG_4_OFF;
+			//DBG_4_OFF;
 		}
 #ifdef CONF_EN_I2C
 		// Check if device scan is in progress.

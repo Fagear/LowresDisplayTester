@@ -45,9 +45,9 @@ Supported MCUs:	ATmega48(-/A/P/AP), ATmega88(-/A/P/AP), ATmega168(-/A/P/AP), ATm
 #define BTN_2_STATE			(SW2_SRC&SW_2)
 
 // Vertical sync output for VGA.
-#define VSYNC_PORT			PORTB
-#define VSYNC_DIR			DDRB
-#define VSYNC_PIN			(1<<2)
+#define VSYNC_PORT			PORTD
+#define VSYNC_DIR			DDRD
+#define VSYNC_PIN			(1<<6)
 #define VSYNC_SETUP1		VSYNC_DIR |= VSYNC_PIN
 #define VSYNC_SETUP2		VSYNC_PORT |= VSYNC_PIN
 #define VSYNC_PULL_UP		VSYNC_PORT |= VSYNC_PIN
@@ -56,42 +56,47 @@ Supported MCUs:	ATmega48(-/A/P/AP), ATmega88(-/A/P/AP), ATmega168(-/A/P/AP), ATm
 // Feedback trigger for sync generated with Timer 1.
 // (INT0 starts 0.5us faster than Timer's own compare interrupt)
 #define SYNC_INT			INT0_vect					// External INT0 interrupt vector alias
-#define SYNC_INT_CFG_REG	EICRA |= (1<<ISC01)			// Configure INT0 to trigger on falling edge
+#define SYNC_INT_CFG_REG	EICRA = (1<<ISC01)			// Configure INT0 to trigger on falling edge
 #define SYNC_INT_EN			EIMSK |= (1<<INT0)			// Enable interrupt
 #define SYNC_INT_DIS		EIMSK &= ~(1<<INT0)			// Disable interrupt
-#define SYNC_CLEAR_FLAG		EIFR |= (1<<INTF0)			// Clear INT0 trigger
 #define SYNC_IN_CFG_PIN1	DDRD &= ~(1<<2)				// INT0 input pin direction
 #define SYNC_IN_CFG_PIN2	PORTD |= (1<<2)				// INT0 input pin port
+//#define SYNC_INT			TIMER1_COMPA_vect
+//#define SYNC_INT_EN			TIMSK1 |= (0<<ICIE1)|(0<<OCIE1B)|(1<<OCIE1A)|(0<<TOIE1)
+//#define SYNC_INT_DIS		TIMSK1 &= ~(1<<OCIE1A)
 
 // Video sync timing setup.
-#define SYNC_CONFIG_NEG		TCCR1A = (1<<COM1A1)|(1<<COM1A0)|(0<<COM1B1)|(0<<COM1B0)|(1<<WGM11)|(0<<WGM10)		// Enable Fast-PWM (negative pulse) with TOP = ICR1
-#define SYNC_CONFIG_POS		TCCR1A = (1<<COM1A1)|(0<<COM1A0)|(0<<COM1B1)|(0<<COM1B0)|(1<<WGM11)|(0<<WGM10)		// Enable Fast-PWM (positive pulse) with TOP = ICR1
+#define HACT_COMP_INT		TIMER1_COMPB_vect						// Timer 1 Compare B interrupt vector alias
+#define HACT_EN_INTR		TIMSK1 |= (0<<ICIE1)|(1<<OCIE1B)|(0<<OCIE1A)|(0<<TOIE1)
+#define HACT_DIS_INTR		TIMSK1 &= ~(1<<OCIE1B)
+#define SYNC_CONFIG_NEG		TCCR1A = (1<<COM1A1)|(1<<COM1A0)|(1<<COM1B1)|(1<<COM1B0)|(1<<WGM11)|(0<<WGM10)		// Enable Fast-PWM (negative pulse) with TOP = ICR1
+#define SYNC_CONFIG_POS		TCCR1A = (1<<COM1A1)|(0<<COM1A0)|(1<<COM1B1)|(1<<COM1B0)|(1<<WGM11)|(0<<WGM10)		// Enable Fast-PWM (positive pulse) with TOP = ICR1
 #define SYNC_CONFIG_RUN		TCCR1B = (0<<ICNC1)|(0<<ICES1)|(1<<WGM13)|(1<<WGM12)|(0<<CS12)|(0<<CS11)|(1<<CS10)	// Start timer with clk/1 clock
 #define SYNC_STEP_DUR		ICR1									// TOP for counter
 #define SYNC_DATA			TCNT1									// Count register
 #define SYNC_DATA_8B		TCNT1L
-#define SYNC_PULSE_DUR		OCR1A									// Duty cycle register
-#define SYNC_CONFIG_PIN1	PORTB &= ~(1<<1)						// Output pin port
-#define SYNC_CONFIG_PIN2	DDRB |= (1<<1)							// Output pin direction
+#define SYNC_PULSE_DUR		OCR1A									// Horizontal sync duty cycle register
+#define HACT_PULSE_DUR		OCR1B									// Line active part duty cycle register
+#define HSYNC_PORT			PORTB
+#define HSYNC_DIR			DDRB
+#define HSYNC_PIN			(1<<1)									// Horizontal/composite sync output
+#define HACT_PIN			(1<<2)									// Active part of the line output
+#define SYNC_CONFIG_PIN1	HSYNC_PORT &= ~(HSYNC_PIN|HACT_PIN)		// Output pins port
+#define SYNC_CONFIG_PIN2	HSYNC_DIR |= (HSYNC_PIN|HACT_PIN)		// Output pins direction
+#define HACT_ON				TCCR1A |= ((1<<COM1B1)|(1<<COM1B0))		// Enable "active part" output as "set on CM, clear at BTM".
+#define HACT_OFF			TCCR1A &= ~((1<<COM1B1)|(1<<COM1B0))	// Disable drive for "active part" output
 
-// Video active line timing setup.
-#define FGR_DRV_IO_T0OC_HW_FOUND
-#define LACT_COMP_INT		TIMER0_COMPA_vect									// Timer 0 Compare interrupt vector alias
-#define LACT_EN_INTR		TIMSK0 = (0<<OCIE0B)|(1<<OCIE0A)|(0<<TOIE0)			// Enable interrupt
-#define LACT_DIS_INTR		TIMSK0 = (0<<OCIE0B)|(0<<OCIE0A)|(0<<TOIE0)			// Disable interrupt
-#define LACT_CONFIG_REG1	TCCR0A = (0<<COM0A1)|(0<<COM0A0)|(0<<COM0B1)|(0<<COM0B0)|(1<<WGM01)|(0<<WGM00)		// CTC (TOP = OCRA)
-#define LACT_CONFIG_REG2	TCCR0B = (0<<FOC0A)|(0<<FOC0B)|(0<<WGM02)|(0<<CS02)|(0<<CS01)|(0<<CS00)
-#define LACT_START			TCCR0B |= (1<<CS01)									// Start timer with clk/8 clock
-#define LACT_STOP			TCCR0B &= ~((1<<CS00)|(1<<CS01)|(1<<CS02))			// Stop timer
-#define LACT_OC_DIS			TCCR0A &= ~((1<<COM0A0)|(1<<COM0A1))				// Disable OC operation
-#define LACT_OC_CLEAR		TCCR0A |= (1<<COM0A1)								// Switch to "Clear OC pin on compare"
-#define LACT_OC_SET			TCCR0A |= (1<<COM0A1)|(1<<COM0A0)					// Switch to "Set OC pin on compare"
-#define LACT_OC_TOGGLE		TCCR0A |= (1<<COM0A0)								// Switch to "Toggle OC pin on compare"
-#define LACT_OC_FORCE		TCCR0B |= (1<<FOC0A)								// Force OC event
-#define LACT_DATA			TCNT0												// Count register
-#define LACT_PULSE_DUR		OCR0A												// Compare register
-#define LACT_CONFIG_PIN1	PORTD &= ~(1<<6)									// OC pin port
-#define LACT_CONFIG_PIN2	DDRD |= (1<<6)										// OC pin direction
+// Video line active part timing setup.
+#define LACT_COMP_INT		TIMER2_COMPA_vect									// Timer 2 Compare A interrupt vector alias
+#define LACT_OVF_INT		TIMER2_OVF_vect										// Timer 2 Overflow interrupt vector alias
+#define LACT_EN_INTR		TIMSK2 |= (0<<OCIE2B)|(1<<OCIE2A)|(1<<TOIE2)		// Enable interrupts
+#define LACT_DIS_INTR		TIMSK2 &= ~((1<<OCIE2B)|(1<<OCIE2A)|(1<<TOIE2))		// Disable interrupts
+#define LACT_CONFIG_REG1	TCCR2A = (0<<COM2A1)|(0<<COM2A0)|(0<<COM2B1)|(0<<COM2B0)|(0<<WGM21)|(0<<WGM20)		// Normal mode
+#define LACT_CONFIG_REG2	TCCR2B = (0<<FOC2A)|(0<<FOC2B)|(0<<WGM22)|(0<<CS22)|(0<<CS21)|(0<<CS20)
+#define LACT_START			TCCR2B |= (1<<CS21)									// Start timer with clk/8 clock
+#define LACT_STOP			TCCR2B &= ~((1<<CS22)|(1<<CS21)|(1<<CS20))			// Stop timer
+#define LACT_DATA			TCNT2												// Count register
+#define LACT_PULSE_DUR		OCR2A												// Compare register
 
 // HD44780-compatible character display.
 #ifdef CONF_EN_HD44780
@@ -198,8 +203,6 @@ inline void HW_init(void)
 	// Timer1 output compare A pin is used to generate sync signal for video.
 	// Timer is re-tuned every horizontal line to produce various impulses.
 	SYNC_CONFIG_PIN1; SYNC_CONFIG_PIN2;
-	// Timer0 output compare A pin is used to indicate active part of the line (and to produce black level).
-	LACT_CONFIG_PIN1; LACT_CONFIG_PIN2;
 	
 	// Configure output for video sync.
 	SYNC_CONFIG_NEG; SYNC_CONFIG_RUN;
@@ -208,16 +211,16 @@ inline void HW_init(void)
 	
 	// Configure active line timer.
 	LACT_CONFIG_REG1; LACT_CONFIG_REG2;
-	LACT_PULSE_DUR = 0xFF;
-	LACT_START;
+	//LACT_PULSE_DUR = 0xFF;
+	//LACT_START;
 	
 	// Enable draw starting interrupts.
 	// INT0 tied to Timer1 compare output is used to re-configure PWM for H-sync.
 	SYNC_IN_CFG_PIN1; SYNC_IN_CFG_PIN2;
-	SYNC_INT_CFG_REG; SYNC_INT_EN;
+	SYNC_INT_CFG_REG;
 
 	// Turn off not used devices for power saving.
-	PWR_COMP_OFF; PWR_ADC_OFF; PWR_T2_OFF;
+	PWR_COMP_OFF; PWR_ADC_OFF; PWR_T0_OFF;
 }
 
 #endif /* FGR_DRV_IO_MXX8_H_ */
