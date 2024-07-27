@@ -19,13 +19,13 @@ volatile uint8_t comp_data_idx = 0;					// Index for vertical bar groups.
 
 volatile const uint8_t ucaf_compile_date[] PROGMEM = __DATE__;		// Date of compilation
 volatile const uint8_t ucaf_compile_time[] PROGMEM = __TIME__;		// Time of compilation
-volatile const uint8_t ucaf_version[] PROGMEM = "v0.09";			// Firmware version
+volatile const uint8_t ucaf_version[] PROGMEM = "v0.10";			// Firmware version
 volatile const uint8_t ucaf_author[] PROGMEM = "Maksim Kryukov aka Fagear (fagear@mail.ru)";	// Author
 volatile const uint8_t ucaf_info[] PROGMEM = "ATmega sync gen/display tester";					// Firmware description
 
 //-------------------------------------- Video sync timing (horizontal/composite), active region timing management (each H-line).
 ISR(SYNC_INT)
-{	
+{
 	/*if(frame_line_cnt==(dbg_index-1))
 	{
 		// Produce pulse for selected video line.
@@ -39,7 +39,7 @@ ISR(SYNC_INT)
 	DBG_2_OFF;
 	// Start line active part end timer.
 	//LACT_START; LACT_DATA = act_delay;
-	
+
 	// Check if current line is in vertical active region.
 	if((active_region&ACT_RUN)!=0)
 	{
@@ -53,7 +53,7 @@ ISR(SYNC_INT)
 		// Disable line active part interrupt inside VBI.
 		LACT_DIS_INTR;
 	}
-		
+
 	// Line-by-line sync and timing management.
 	if(video_sys==MODE_VGA_60Hz)
 	{
@@ -426,10 +426,10 @@ ISR(SYNC_INT)
 ISR(LACT_COMP_INT)
 {
 	//DBG_3_ON;
-	
+
 	// Turn off active part output.
 	HACT_OFF;
-	
+
 	//DBG_3_OFF;
 }
 
@@ -437,16 +437,16 @@ ISR(LACT_COMP_INT)
 ISR(LACT_OVF_INT)
 {
 	DBG_4_ON;
-	
+
 	// Timer self-shutdown.
 	LACT_STOP;
-	
+
 	if(active_region!=0)
 	{
 		// Re-arm active part output.
 		HACT_ON;
 	}
-	
+
 	DBG_4_OFF;
 }
 
@@ -541,7 +541,7 @@ inline void system_startup(void)
 	WDT_PREP_ON;
 	WDT_SW_ON;
 	wdt_reset();
-	
+
 	// Init hardware resources.
 	HW_init();
 	// Preload some values to sync timer.
@@ -660,7 +660,7 @@ uint8_t select_video_std(void)
 	return fps;
 }
 
-//====================================== MAIN FUNCTION. 
+//====================================== MAIN FUNCTION.
 int main(void)
 {
 	// Start-up initialization.
@@ -676,7 +676,7 @@ int main(void)
 	//dbg_index = 305;
 	//dbg_index = 315;
 	//dbg_index = 620;
-	
+
 #ifdef CONF_EN_HD44780P
 	// Parallel HD44780 display initialization.
 	HD44780_setup(HD44780_RES_16X2, HD44780_CYR_NOCONV);
@@ -687,7 +687,7 @@ int main(void)
 		HD44780_write_string((uint8_t *)"Display TEST|");
 	}
 #endif /* CONF_EN_HD44780P */
-	
+
 	// Enable interrupts globally.
 	sei();
 	// Later enabling of sync interrupt makes more straight bars.
