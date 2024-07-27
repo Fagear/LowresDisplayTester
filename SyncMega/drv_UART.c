@@ -1,4 +1,4 @@
-#include "drv_uart.h"
+ï»¿#include "drv_uart.h"
 #include <stdio.h>
 
 #ifdef FGR_DRV_UART_HW_FOUND
@@ -72,7 +72,7 @@ void add_str_to_out_buf(const uint8_t *input_ptr, const uint8_t data_mode)
 		p_send=0;
 		p_write=3;
 		send_char_count=3;
-		c_send_arr[0]='†';
+		c_send_arr[0]='?';
 		c_send_arr[1]='\n';
 		c_send_arr[2]='\r';
 	}

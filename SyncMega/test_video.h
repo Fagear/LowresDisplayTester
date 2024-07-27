@@ -1,7 +1,7 @@
-/**************************************************************************************************************************************************************
+﻿/**************************************************************************************************************************************************************
 test_video.h
 
-Copyright � 2024 Maksim Kryukov <fagear@mail.ru>
+Copyright © 2024 Maksim Kryukov <fagear@mail.ru>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,7 +30,12 @@ Generation for:
 #ifndef TEST_VIDEO_H_
 #define TEST_VIDEO_H_
 
-// Timings are for sync timer (Tsync) running @ 16 MHz (62.5 ns/tick), active line timer (Tact) running @ 2 MHz (500 ns/tick).
+// Timings are for sync timer (Tsync) running @ 16 MHz (62.5 ns/tick).
+
+// Horizontal clocks
+// 16000000 / 508 = 8000000 / 254 = 4000000 / 127 = 31496 (31476)
+// 16000000 / 1024 = 8000000 / 512 = 4000000 / 256 = 2000000 / 128 = 1000000 / 64 = 15625
+// 16000000 / 1017 = 15732 (15734,279)
 
 // Sync timing constants.
 enum
@@ -53,7 +58,7 @@ enum
 	COMP_EQ_PULSE_LEN_625i	= 37,	// (Tsync) Duration of negative pulse for composite equalization pulses (~2.4us)
 	COMP_ACT_DELAY_625i		= 165,	// (Tsync) Delay from H-sync to active part of the line for composite 625i
 	
-	EGA_LINE_LEN			= 1017,	// (Tsync) Line duration for CGA/EGA
+	EGA_LINE_LEN			= 1016,	// (Tsync) Line duration for CGA/EGA
 	EGA_SYNC_H_LEN			= 64,	// (Tsync) Duration of positive pulse for CGA/EGA vertical sync pulses
 	EGA_ACT_DELAY			= 145,	// (Tsync) Delay from H-sync to active part of the line for CGA/EGA
 	

@@ -1,4 +1,4 @@
-#include "test_chardisp.h"
+﻿#include "test_chardisp.h"
 
 #ifdef CONF_EN_CHARDISP
 #include "flash_strings.h"
@@ -6,6 +6,7 @@
 uint8_t chardisp_page_step = 0;
 uint8_t chardisp_ani_step = 0;
 
+#ifdef CHARDISP_FULL
 //-------------------------------------- Animation order.
 const int8_t* const ani_vert_fadeout[] PROGMEM =
 {
@@ -95,6 +96,7 @@ const int8_t* const ani_fadeout[] PROGMEM =
 	usr_char_lvl17,
 	usr_char_lvl18		// Fadeout animation, step 7.
 };
+#endif	/* CHARDISP_FULL */
 
 //-------------------------------------- Functions' pointers ("API").
 static uint8_t (*chardisp_upload_symbol_flash)(uint8_t symbol_number, const int8_t *symbol_array);
@@ -134,7 +136,7 @@ uint8_t chardisp_fill(uint8_t count, uint8_t symbol)
 	uint8_t error_mask = 0;
 	for(uint8_t idx=0;idx<count;idx++)
 	{
-		error_mask += chardisp_write_char(symbol);
+		error_mask |= chardisp_write_char(symbol);
 	}
 	return error_mask;
 }
@@ -144,10 +146,10 @@ uint8_t chardisp_clear(void)
 {
 	uint8_t error_mask = 0;
 	// Clear screen.
-	error_mask += chardisp_set_xy_position(0, 0);
-	error_mask += chardisp_fill(40, CHAR_SPACE);
-	error_mask += chardisp_set_xy_position(0, 1);
-	error_mask += chardisp_fill(40, CHAR_SPACE);
+	error_mask |= chardisp_set_xy_position(0, 0);
+	error_mask |= chardisp_fill(40, CHAR_SPACE);
+	error_mask |= chardisp_set_xy_position(0, 1);
+	error_mask |= chardisp_fill(40, CHAR_SPACE);
 	return error_mask;
 }
 
@@ -158,43 +160,43 @@ uint8_t chardisp_step_ani_rotate(uint8_t *err_mask)
 	if(chardisp_ani_step==0)
 	{
 		// Load custom font.
-		(*err_mask) += chardisp_upload_symbol_flash(C_CHAR_4, usr_char_rot1);
-		(*err_mask) += chardisp_upload_symbol_flash(C_CHAR_5, usr_char_rot2);
-		(*err_mask) += chardisp_upload_symbol_flash(C_CHAR_6, usr_char_rot3);
-		(*err_mask) += chardisp_upload_symbol_flash(C_CHAR_7, usr_char_rot4);
+		(*err_mask) |= chardisp_upload_symbol_flash(C_CHAR_4, usr_char_rot1);
+		(*err_mask) |= chardisp_upload_symbol_flash(C_CHAR_5, usr_char_rot2);
+		(*err_mask) |= chardisp_upload_symbol_flash(C_CHAR_6, usr_char_rot3);
+		(*err_mask) |= chardisp_upload_symbol_flash(C_CHAR_7, usr_char_rot4);
 	}
 	else if((chardisp_ani_step==1)||(chardisp_ani_step==17)||(chardisp_ani_step==33))
 	{
 		// Rotate 0/90 phase, step 1.
-		(*err_mask) += chardisp_set_xy_position(0, 0);
-		(*err_mask) += chardisp_write_char(C_CHAR_4);
-		(*err_mask) += chardisp_set_xy_position(7, 0);
-		(*err_mask) += chardisp_write_char(C_CHAR_6);
+		(*err_mask) |= chardisp_set_xy_position(0, 0);
+		(*err_mask) |= chardisp_write_char(C_CHAR_4);
+		(*err_mask) |= chardisp_set_xy_position(7, 0);
+		(*err_mask) |= chardisp_write_char(C_CHAR_6);
 	}
 	else if((chardisp_ani_step==5)||(chardisp_ani_step==21)||(chardisp_ani_step==37))
 	{
 		// Rotate 45/135 phase, step 2.
-		(*err_mask) += chardisp_set_xy_position(0, 0);
-		(*err_mask) += chardisp_write_char(C_CHAR_5);
-		(*err_mask) += chardisp_set_xy_position(7, 0);
-		(*err_mask) += chardisp_write_char(C_CHAR_7);
+		(*err_mask) |= chardisp_set_xy_position(0, 0);
+		(*err_mask) |= chardisp_write_char(C_CHAR_5);
+		(*err_mask) |= chardisp_set_xy_position(7, 0);
+		(*err_mask) |= chardisp_write_char(C_CHAR_7);
 	}
 	else if((chardisp_ani_step==9)||(chardisp_ani_step==25)||(chardisp_ani_step==41))
 	{
 		// Rotate 90/180 phase, step 3.
-		(*err_mask) += chardisp_set_xy_position(0, 0);
-		(*err_mask) += chardisp_write_char(C_CHAR_6);
-		(*err_mask) += chardisp_set_xy_position(7, 0);
-		(*err_mask) += chardisp_write_char(C_CHAR_4);
+		(*err_mask) |= chardisp_set_xy_position(0, 0);
+		(*err_mask) |= chardisp_write_char(C_CHAR_6);
+		(*err_mask) |= chardisp_set_xy_position(7, 0);
+		(*err_mask) |= chardisp_write_char(C_CHAR_4);
 	}
 	else if((chardisp_ani_step==13)||(chardisp_ani_step==29)||(chardisp_ani_step==45))
 	{
 		// Rotate 135/225 phase, step 4.
-		(*err_mask) += chardisp_set_xy_position(0, 0);
-		(*err_mask) += chardisp_write_char(C_CHAR_7);
+		(*err_mask) |= chardisp_set_xy_position(0, 0);
+		(*err_mask) |= chardisp_write_char(C_CHAR_7);
 
-		(*err_mask) += chardisp_set_xy_position(7, 0);
-		(*err_mask) += chardisp_write_char(C_CHAR_5);
+		(*err_mask) |= chardisp_set_xy_position(7, 0);
+		(*err_mask) |= chardisp_write_char(C_CHAR_5);
 	}
 	// Next step.
 	chardisp_ani_step++;
@@ -213,20 +215,20 @@ uint8_t chardisp_step_ani_levels(uint8_t *err_mask)
 	if(chardisp_ani_step==0)
 	{
 		// Clear screen.
-		(*err_mask) += chardisp_clear();
+		(*err_mask) |= chardisp_clear();
 		// Load custom font.
-		(*err_mask) += chardisp_upload_symbol_flash(C_CHAR_0, usr_char_lvl1);	// Horizontal "no level"
-		(*err_mask) += chardisp_upload_symbol_flash(C_CHAR_1, usr_char_lvl2);	// Horizontal "low level"
-		(*err_mask) += chardisp_upload_symbol_flash(C_CHAR_2, usr_char_lvl3);	// Horizontal "mid level"
-		(*err_mask) += chardisp_upload_symbol_flash(C_CHAR_3, usr_char_lvl4);	// Horizontal "high level"
+		(*err_mask) |= chardisp_upload_symbol_flash(C_CHAR_0, usr_char_lvl1);	// Horizontal "no level"
+		(*err_mask) |= chardisp_upload_symbol_flash(C_CHAR_1, usr_char_lvl2);	// Horizontal "low level"
+		(*err_mask) |= chardisp_upload_symbol_flash(C_CHAR_2, usr_char_lvl3);	// Horizontal "mid level"
+		(*err_mask) |= chardisp_upload_symbol_flash(C_CHAR_3, usr_char_lvl4);	// Horizontal "high level"
 	}
 	else if((chardisp_ani_step>0)&&(chardisp_ani_step<=40))
 	{
 		// Fill lines with "no level" char.
 		for(idx=0;idx<2;idx++)
 		{
-			(*err_mask) += chardisp_set_xy_position((chardisp_ani_step-1), idx);
-			(*err_mask) += chardisp_write_char(C_CHAR_0);
+			(*err_mask) |= chardisp_set_xy_position((chardisp_ani_step-1), idx);
+			(*err_mask) |= chardisp_write_char(C_CHAR_0);
 		}
 	}
 	else if((chardisp_ani_step>=42)&&(chardisp_ani_step<=161))
@@ -239,8 +241,8 @@ uint8_t chardisp_step_ani_levels(uint8_t *err_mask)
 			// Replace chars in the current column with horizontal "low level".
 			for(idx=0;idx<2;idx++)
 			{
-				(*err_mask) += chardisp_set_xy_position(xcoord, idx);
-				(*err_mask) += chardisp_write_char(C_CHAR_1);
+				(*err_mask) |= chardisp_set_xy_position(xcoord, idx);
+				(*err_mask) |= chardisp_write_char(C_CHAR_1);
 			}
 		}
 		else if(idx==1)
@@ -248,8 +250,8 @@ uint8_t chardisp_step_ani_levels(uint8_t *err_mask)
 			// Replace chars in the current column with horizontal "mid level".
 			for(idx=0;idx<2;idx++)
 			{
-				(*err_mask) += chardisp_set_xy_position(xcoord, idx);
-				(*err_mask) += chardisp_write_char(C_CHAR_2);
+				(*err_mask) |= chardisp_set_xy_position(xcoord, idx);
+				(*err_mask) |= chardisp_write_char(C_CHAR_2);
 			}
 		}
 		else if(idx==2)
@@ -257,20 +259,26 @@ uint8_t chardisp_step_ani_levels(uint8_t *err_mask)
 			// Replace chars in the current column with horizontal "high level".
 			for(idx=0;idx<2;idx++)
 			{
-				(*err_mask) += chardisp_set_xy_position(xcoord, idx);
-				(*err_mask) += chardisp_write_char(C_CHAR_3);
+				(*err_mask) |= chardisp_set_xy_position(xcoord, idx);
+				(*err_mask) |= chardisp_write_char(C_CHAR_3);
 			}
 		}
 	}
 	else if((chardisp_ani_step>=170)&&(chardisp_ani_step<=200)&&((chardisp_ani_step%5)==0))
 	{
+		uint8_t ani_idx;
+		int8_t *ani_data;
+		// Calculate index for animation.
+		ani_idx = (chardisp_ani_step/5)-33;
+		// Retrieve custom symbol from ROM.
+		ani_data = (int8_t *)pgm_read_word(&ani_vert_fadeout[ani_idx]);
 		// Perform whole screen animation, loading custom symbol by LUT.
-		(*err_mask) += chardisp_upload_symbol_flash(C_CHAR_3, ani_vert_fadeout[((chardisp_ani_step/5)-33)]);
+		(*err_mask) |= chardisp_upload_symbol_flash(C_CHAR_3, ani_data);
 	}
 	else if(chardisp_ani_step==205)
 	{
 		// Clear screen.
-		(*err_mask) += chardisp_clear();
+		(*err_mask) |= chardisp_clear();
 	}
 	// Next step.
 	chardisp_ani_step++;
@@ -281,23 +289,28 @@ uint8_t chardisp_step_ani_levels(uint8_t *err_mask)
 	}
 	return ST_ANI_BUSY;
 }
-#endif /* CHARDISP_FULL */
 
 //-------------------------------------- Draw spiral animation.
 uint8_t chardisp_step_ani_spiral(uint8_t *err_mask)
 {
-	if(((chardisp_ani_step%3)==0)&&(chardisp_ani_step<=192))
+	if(((chardisp_ani_step%3)==0)&&(chardisp_ani_step<=183))
 	{
+		uint8_t ani_idx;
+		int8_t *ani_data;
+		// Calculate index for animation.
+		ani_idx = chardisp_ani_step/3;
+		// Retrieve custom symbol from ROM.
+		ani_data = (int8_t *)pgm_read_word(&ani_spiral[ani_idx]);
 		// Perform whole screen animation, loading custom symbol by LUT.
-		(*err_mask) += chardisp_upload_symbol_flash(C_CHAR_0, ani_spiral[chardisp_ani_step/3]);
+		(*err_mask) |= chardisp_upload_symbol_flash(C_CHAR_0, ani_data);
 	}
 	if(chardisp_ani_step==0)
 	{
 		// Fill the screen.
-		(*err_mask) += chardisp_set_xy_position(0, 0);
-		(*err_mask) += chardisp_fill(40, C_CHAR_0);
-		(*err_mask) += chardisp_set_xy_position(0, 1);
-		(*err_mask) += chardisp_fill(40, C_CHAR_0);
+		(*err_mask) |= chardisp_set_xy_position(0, 0);
+		(*err_mask) |= chardisp_fill(40, C_CHAR_0);
+		(*err_mask) |= chardisp_set_xy_position(0, 1);
+		(*err_mask) |= chardisp_fill(40, C_CHAR_0);
 	}
 	// Next step.
 	chardisp_ani_step++;
@@ -315,34 +328,46 @@ uint8_t chardisp_step_ani_fade(uint8_t *err_mask)
 	if(chardisp_ani_step==0)
 	{
 		// Load new fill symbol.
-		(*err_mask) += chardisp_upload_symbol_flash(C_CHAR_1, usr_char_fill);
+		(*err_mask) |= chardisp_upload_symbol_flash(C_CHAR_1, usr_char_fill);
 		// Fill 2nd line with another custom symbol (with no visual difference, yet).
-		(*err_mask) += chardisp_set_xy_position(0, 1);
-		(*err_mask) += chardisp_fill(40, C_CHAR_1);
+		(*err_mask) |= chardisp_set_xy_position(0, 1);
+		(*err_mask) |= chardisp_fill(40, C_CHAR_1);
 	}
-	else if((chardisp_ani_step<=30)&&((chardisp_ani_step%5)==0))
+	if((chardisp_ani_step<=30)&&((chardisp_ani_step%5)==0))
 	{
+		uint8_t ani_idx;
+		int8_t *ani_data;
+		// Calculate index for animation.
+		ani_idx = chardisp_ani_step/5;
+		// Retrieve custom symbol from ROM.
+		ani_data = (int8_t *)pgm_read_word(&ani_fadeout[ani_idx]);
 		// Perform first line animation, loading custom symbol by LUT.
-		(*err_mask) += chardisp_upload_symbol_flash(C_CHAR_0, ani_fadeout[chardisp_ani_step/5]);
+		(*err_mask) |= chardisp_upload_symbol_flash(C_CHAR_0, ani_data);
 	}
 	else if(chardisp_ani_step==35)
 	{
 		// Fadeout animation.
 		// Fill first line with empty spaces.
-		(*err_mask) += chardisp_set_xy_position(0, 0);
-		(*err_mask) += chardisp_fill(40, CHAR_SPACE);
+		(*err_mask) |= chardisp_set_xy_position(0, 0);
+		(*err_mask) |= chardisp_fill(40, CHAR_SPACE);
 	}
 	else if((chardisp_ani_step>=40)&&(chardisp_ani_step<=70)&&((chardisp_ani_step%5)==0))
 	{
+		uint8_t ani_idx;
+		int8_t *ani_data;
+		// Calculate index for animation.
+		ani_idx = (chardisp_ani_step/5)-8;
+		// Retrieve custom symbol from ROM.
+		ani_data = (int8_t *)pgm_read_word(&ani_fadeout[ani_idx]);
 		// Perform second line animation, loading custom symbol by LUT.
-		(*err_mask) += chardisp_upload_symbol_flash(C_CHAR_1, ani_fadeout[((chardisp_ani_step/5)-8)]);
+		(*err_mask) |= chardisp_upload_symbol_flash(C_CHAR_1, ani_data);
 	}
 	else if(chardisp_ani_step==75)
 	{
 		// Fadeout animation.
 		// Fill second line with empty spaces.
-		(*err_mask) += chardisp_set_xy_position(0, 1);
-		(*err_mask) += chardisp_fill(40, CHAR_SPACE);
+		(*err_mask) |= chardisp_set_xy_position(0, 1);
+		(*err_mask) |= chardisp_fill(40, CHAR_SPACE);
 	}
 	// Next step.
 	chardisp_ani_step++;
@@ -353,6 +378,7 @@ uint8_t chardisp_step_ani_fade(uint8_t *err_mask)
 	}
 	return ST_ANI_BUSY;
 }
+#endif /* CHARDISP_FULL */
 
 //-------------------------------------- Print out all symbols from codepage.
 uint8_t chardisp_step_ani_cp_fill(uint8_t *err_mask)
@@ -360,30 +386,30 @@ uint8_t chardisp_step_ani_cp_fill(uint8_t *err_mask)
 	if(chardisp_ani_step==0)
 	{
 		// Load custom letters to print out.
-		(*err_mask) += chardisp_upload_symbol_flash(C_CHAR_0, usr_char_fgr1);
-		(*err_mask) += chardisp_upload_symbol_flash(C_CHAR_1, usr_char_fgr2);
-		(*err_mask) += chardisp_upload_symbol_flash(C_CHAR_2, usr_char_fgr3);
-		(*err_mask) += chardisp_upload_symbol_flash(C_CHAR_3, usr_char_test1);
-		(*err_mask) += chardisp_upload_symbol_flash(C_CHAR_4, usr_char_test2);
-		(*err_mask) += chardisp_upload_symbol_flash(C_CHAR_5, usr_char_test3);
-		(*err_mask) += chardisp_upload_symbol_flash(C_CHAR_6, usr_char_test1);
-		(*err_mask) += chardisp_upload_symbol_flash(C_CHAR_7, usr_char_lvl1);
+		(*err_mask) |= chardisp_upload_symbol_flash(C_CHAR_0, usr_char_fgr1);
+		(*err_mask) |= chardisp_upload_symbol_flash(C_CHAR_1, usr_char_fgr2);
+		(*err_mask) |= chardisp_upload_symbol_flash(C_CHAR_2, usr_char_fgr3);
+		(*err_mask) |= chardisp_upload_symbol_flash(C_CHAR_3, usr_char_test1);
+		(*err_mask) |= chardisp_upload_symbol_flash(C_CHAR_4, usr_char_test2);
+		(*err_mask) |= chardisp_upload_symbol_flash(C_CHAR_5, usr_char_test3);
+		(*err_mask) |= chardisp_upload_symbol_flash(C_CHAR_6, usr_char_test1);
+		(*err_mask) |= chardisp_upload_symbol_flash(C_CHAR_7, usr_char_lvl1);
 	}
 	if((chardisp_ani_step%16)==0)
 	{
 		if((chardisp_ani_step%32)==0)
 		{
 			// Set home position.
-			(*err_mask) += chardisp_set_xy_position(0, 0);
+			(*err_mask) |= chardisp_set_xy_position(0, 0);
 		}
 		else
 		{
 			// Set home position.
-			(*err_mask) += chardisp_set_xy_position(0, 1);
+			(*err_mask) |= chardisp_set_xy_position(0, 1);
 		}
 	}
 	// Print next symbol.
-	(*err_mask) += chardisp_write_char(chardisp_ani_step);
+	(*err_mask) |= chardisp_write_char(chardisp_ani_step);
 	
 	// Next step.
 	chardisp_ani_step++;
@@ -406,8 +432,8 @@ uint8_t chardisp_step_animation(uint8_t switch_tick)
 			// Not yet.
 			chardisp_ani_step++;
 			// Draw the page.
-			err_collector += chardisp_set_xy_position(0, 0);
-			err_collector += chardisp_write_flash_string(chardisp_det);
+			err_collector |= chardisp_set_xy_position(0, 0);
+			err_collector |= chardisp_write_flash_string(chardisp_det);
 		}
 		else if(switch_tick!=0)
 		{
@@ -425,8 +451,8 @@ uint8_t chardisp_step_animation(uint8_t switch_tick)
 			// Not yet.
 			chardisp_ani_step++;
 			// Draw the page.
-			err_collector += chardisp_set_xy_position(0, 0);
-			err_collector += chardisp_write_flash_string(chardisp_dsp_1x8);
+			err_collector |= chardisp_set_xy_position(0, 0);
+			err_collector |= chardisp_write_flash_string(chardisp_dsp_1x8);
 		}
 		else if(switch_tick!=0)
 		{
@@ -444,10 +470,10 @@ uint8_t chardisp_step_animation(uint8_t switch_tick)
 			// Not yet.
 			chardisp_ani_step++;
 			// Draw the page.
-			err_collector += chardisp_set_xy_position(12, 0);
-			err_collector += chardisp_write_flash_string(chardisp_dsp_x16);
-			err_collector += chardisp_set_xy_position(0, 1);
-			err_collector += chardisp_write_flash_string(chardisp_dsp_row2);
+			err_collector |= chardisp_set_xy_position(12, 0);
+			err_collector |= chardisp_write_flash_string(chardisp_dsp_x16);
+			err_collector |= chardisp_set_xy_position(0, 1);
+			err_collector |= chardisp_write_flash_string(chardisp_dsp_row2);
 		}
 		else if(switch_tick!=0)
 		{
@@ -465,8 +491,8 @@ uint8_t chardisp_step_animation(uint8_t switch_tick)
 			// Not yet.
 			chardisp_ani_step++;
 			// Draw the page.
-			err_collector += chardisp_set_xy_position(16, 0);
-			err_collector += chardisp_write_flash_string(chardisp_dsp_x20);
+			err_collector |= chardisp_set_xy_position(16, 0);
+			err_collector |= chardisp_write_flash_string(chardisp_dsp_x20);
 		}
 		else if(switch_tick!=0)
 		{
@@ -484,8 +510,8 @@ uint8_t chardisp_step_animation(uint8_t switch_tick)
 			// Not yet.
 			chardisp_ani_step++;
 			// Draw the page.
-			err_collector += chardisp_set_xy_position(20, 0);
-			err_collector += chardisp_write_flash_string(chardisp_dsp_x24);
+			err_collector |= chardisp_set_xy_position(20, 0);
+			err_collector |= chardisp_write_flash_string(chardisp_dsp_x24);
 		}
 		else if(switch_tick!=0)
 		{
@@ -503,10 +529,10 @@ uint8_t chardisp_step_animation(uint8_t switch_tick)
 			// Not yet.
 			chardisp_ani_step++;
 			// Draw the page.
-			err_collector += chardisp_set_xy_position(36, 0);
-			err_collector += chardisp_write_flash_string(chardisp_dsp_x40);
-			err_collector += chardisp_set_xy_position(6, 3);
-			err_collector += chardisp_write_flash_string(chardisp_dsp_row4);
+			err_collector |= chardisp_set_xy_position(36, 0);
+			err_collector |= chardisp_write_flash_string(chardisp_dsp_x40);
+			err_collector |= chardisp_set_xy_position(6, 3);
+			err_collector |= chardisp_write_flash_string(chardisp_dsp_row4);
 		}
 		else if(switch_tick!=0)
 		{
@@ -534,12 +560,12 @@ uint8_t chardisp_step_animation(uint8_t switch_tick)
 			// Not yet.
 			chardisp_ani_step++;
 			// Clear screen.
-			err_collector += chardisp_clear();
+			err_collector |= chardisp_clear();
 			// Draw the page.
-			err_collector += chardisp_set_xy_position(0, 0);
-			err_collector += chardisp_write_flash_string(chardisp_dsp_1x8);
-			err_collector += chardisp_set_xy_position(0, 1);
-			err_collector += chardisp_write_flash_string(chardisp_dsp_row2_2);
+			err_collector |= chardisp_set_xy_position(0, 0);
+			err_collector |= chardisp_write_flash_string(chardisp_dsp_1x8);
+			err_collector |= chardisp_set_xy_position(0, 1);
+			err_collector |= chardisp_write_flash_string(chardisp_dsp_row2_2);
 		}
 		else if(switch_tick!=0)
 		{
@@ -557,30 +583,30 @@ uint8_t chardisp_step_animation(uint8_t switch_tick)
 			// Not yet.
 			chardisp_ani_step++;
 			// Load custom symbols.
-			err_collector += chardisp_upload_symbol_flash(C_CHAR_0, usr_char_triag1);
-			err_collector += chardisp_upload_symbol_flash(C_CHAR_1, usr_char_triag2);
-			err_collector += chardisp_upload_symbol_flash(C_CHAR_2, usr_char_triag3);
-			err_collector += chardisp_upload_symbol_flash(C_CHAR_3, usr_char_triag4);
-			err_collector += chardisp_upload_symbol_flash(C_CHAR_4, usr_char_fill);
+			err_collector |= chardisp_upload_symbol_flash(C_CHAR_0, usr_char_triag1);
+			err_collector |= chardisp_upload_symbol_flash(C_CHAR_1, usr_char_triag2);
+			err_collector |= chardisp_upload_symbol_flash(C_CHAR_2, usr_char_triag3);
+			err_collector |= chardisp_upload_symbol_flash(C_CHAR_3, usr_char_triag4);
+			err_collector |= chardisp_upload_symbol_flash(C_CHAR_4, usr_char_fill);
 			// Draw the page.
-			err_collector += chardisp_set_xy_position(0, 0);
-			err_collector += chardisp_write_flash_string(chardisp_dsp_row1_2);
-			err_collector += chardisp_set_xy_position(0, 1);
-			err_collector += chardisp_write_flash_string(chardisp_dsp_row2_2);
-			err_collector += chardisp_set_xy_position(12, 0);
-			err_collector += chardisp_write_flash_string(chardisp_dsp_x16);
-			err_collector += chardisp_set_xy_position(12, 1);
-			err_collector += chardisp_write_flash_string(chardisp_dsp_x16);
-			err_collector += chardisp_set_xy_position(7, 0);
-			err_collector += chardisp_write_char(C_CHAR_0);
-			err_collector += chardisp_write_char(C_CHAR_4);
-			err_collector += chardisp_write_char(C_CHAR_4);
-			err_collector += chardisp_write_char(C_CHAR_1);
-			err_collector += chardisp_set_xy_position(7, 1);
-			err_collector += chardisp_write_char(C_CHAR_3);
-			err_collector += chardisp_write_char(C_CHAR_4);
-			err_collector += chardisp_write_char(C_CHAR_4);
-			err_collector += chardisp_write_char(C_CHAR_2);
+			err_collector |= chardisp_set_xy_position(0, 0);
+			err_collector |= chardisp_write_flash_string(chardisp_dsp_row1_2);
+			err_collector |= chardisp_set_xy_position(0, 1);
+			err_collector |= chardisp_write_flash_string(chardisp_dsp_row2_2);
+			err_collector |= chardisp_set_xy_position(12, 0);
+			err_collector |= chardisp_write_flash_string(chardisp_dsp_x16);
+			err_collector |= chardisp_set_xy_position(12, 1);
+			err_collector |= chardisp_write_flash_string(chardisp_dsp_x16);
+			err_collector |= chardisp_set_xy_position(7, 0);
+			err_collector |= chardisp_write_char(C_CHAR_0);
+			err_collector |= chardisp_write_char(C_CHAR_4);
+			err_collector |= chardisp_write_char(C_CHAR_4);
+			err_collector |= chardisp_write_char(C_CHAR_1);
+			err_collector |= chardisp_set_xy_position(7, 1);
+			err_collector |= chardisp_write_char(C_CHAR_3);
+			err_collector |= chardisp_write_char(C_CHAR_4);
+			err_collector |= chardisp_write_char(C_CHAR_4);
+			err_collector |= chardisp_write_char(C_CHAR_2);
 		}
 		else if(switch_tick!=0)
 		{
@@ -598,22 +624,22 @@ uint8_t chardisp_step_animation(uint8_t switch_tick)
 			// Not yet.
 			chardisp_ani_step++;
 			// Draw the page.
-			err_collector += chardisp_set_xy_position(6, 0);
-			err_collector += chardisp_fill(10, CHAR_SPACE);
-			err_collector += chardisp_write_flash_string(chardisp_dsp_x20);
-			err_collector += chardisp_set_xy_position(6, 1);
-			err_collector += chardisp_fill(10, CHAR_SPACE);
-			err_collector += chardisp_write_flash_string(chardisp_dsp_x20);
-			err_collector += chardisp_set_xy_position(9, 0);
-			err_collector += chardisp_write_char(C_CHAR_0);
-			err_collector += chardisp_write_char(C_CHAR_4);
-			err_collector += chardisp_write_char(C_CHAR_4);
-			err_collector += chardisp_write_char(C_CHAR_1);
-			err_collector += chardisp_set_xy_position(9, 1);
-			err_collector += chardisp_write_char(C_CHAR_3);
-			err_collector += chardisp_write_char(C_CHAR_4);
-			err_collector += chardisp_write_char(C_CHAR_4);
-			err_collector += chardisp_write_char(C_CHAR_2);
+			err_collector |= chardisp_set_xy_position(6, 0);
+			err_collector |= chardisp_fill(10, CHAR_SPACE);
+			err_collector |= chardisp_write_flash_string(chardisp_dsp_x20);
+			err_collector |= chardisp_set_xy_position(6, 1);
+			err_collector |= chardisp_fill(10, CHAR_SPACE);
+			err_collector |= chardisp_write_flash_string(chardisp_dsp_x20);
+			err_collector |= chardisp_set_xy_position(9, 0);
+			err_collector |= chardisp_write_char(C_CHAR_0);
+			err_collector |= chardisp_write_char(C_CHAR_4);
+			err_collector |= chardisp_write_char(C_CHAR_4);
+			err_collector |= chardisp_write_char(C_CHAR_1);
+			err_collector |= chardisp_set_xy_position(9, 1);
+			err_collector |= chardisp_write_char(C_CHAR_3);
+			err_collector |= chardisp_write_char(C_CHAR_4);
+			err_collector |= chardisp_write_char(C_CHAR_4);
+			err_collector |= chardisp_write_char(C_CHAR_2);
 		}
 		else if(switch_tick!=0)
 		{
@@ -631,22 +657,22 @@ uint8_t chardisp_step_animation(uint8_t switch_tick)
 			// Not yet.
 			chardisp_ani_step++;
 			// Draw the page.
-			err_collector += chardisp_set_xy_position(9, 0);
-			err_collector += chardisp_fill(11, CHAR_SPACE);
-			err_collector += chardisp_write_flash_string(chardisp_dsp_x24);
-			err_collector += chardisp_set_xy_position(9, 1);
-			err_collector += chardisp_fill(11, CHAR_SPACE);
-			err_collector += chardisp_write_flash_string(chardisp_dsp_x24);
-			err_collector += chardisp_set_xy_position(11, 0);
-			err_collector += chardisp_write_char(C_CHAR_0);
-			err_collector += chardisp_write_char(C_CHAR_4);
-			err_collector += chardisp_write_char(C_CHAR_4);
-			err_collector += chardisp_write_char(C_CHAR_1);
-			err_collector += chardisp_set_xy_position(11, 1);
-			err_collector += chardisp_write_char(C_CHAR_3);
-			err_collector += chardisp_write_char(C_CHAR_4);
-			err_collector += chardisp_write_char(C_CHAR_4);
-			err_collector += chardisp_write_char(C_CHAR_2);
+			err_collector |= chardisp_set_xy_position(9, 0);
+			err_collector |= chardisp_fill(11, CHAR_SPACE);
+			err_collector |= chardisp_write_flash_string(chardisp_dsp_x24);
+			err_collector |= chardisp_set_xy_position(9, 1);
+			err_collector |= chardisp_fill(11, CHAR_SPACE);
+			err_collector |= chardisp_write_flash_string(chardisp_dsp_x24);
+			err_collector |= chardisp_set_xy_position(11, 0);
+			err_collector |= chardisp_write_char(C_CHAR_0);
+			err_collector |= chardisp_write_char(C_CHAR_4);
+			err_collector |= chardisp_write_char(C_CHAR_4);
+			err_collector |= chardisp_write_char(C_CHAR_1);
+			err_collector |= chardisp_set_xy_position(11, 1);
+			err_collector |= chardisp_write_char(C_CHAR_3);
+			err_collector |= chardisp_write_char(C_CHAR_4);
+			err_collector |= chardisp_write_char(C_CHAR_4);
+			err_collector |= chardisp_write_char(C_CHAR_2);
 		}
 		else if(switch_tick!=0)
 		{
@@ -664,52 +690,52 @@ uint8_t chardisp_step_animation(uint8_t switch_tick)
 			// Not yet.
 			chardisp_ani_step++;
 			// Draw the page.
-			err_collector += chardisp_set_xy_position(7, 0);
-			err_collector += chardisp_fill(9, CHAR_SPACE);
-			err_collector += chardisp_write_flash_string(chardisp_dsp_x20);
-			err_collector += chardisp_set_xy_position(7, 1);
-			err_collector += chardisp_fill(9, CHAR_SPACE);
-			err_collector += chardisp_write_flash_string(chardisp_dsp_x20);
-			err_collector += chardisp_set_xy_position(0, 2);
-			err_collector += chardisp_write_flash_string(chardisp_dsp_row3);
-			err_collector += chardisp_fill(10, CHAR_SPACE);
-			err_collector += chardisp_write_flash_string(chardisp_dsp_x20);
-			err_collector += chardisp_set_xy_position(0, 3);
-			err_collector += chardisp_write_flash_string(chardisp_dsp_row4_2);
-			err_collector += chardisp_fill(10, CHAR_SPACE);
-			err_collector += chardisp_write_flash_string(chardisp_dsp_x20);
-			err_collector += chardisp_set_xy_position(8, 0);
-			err_collector += chardisp_write_char(C_CHAR_0);
-			err_collector += chardisp_write_char(C_CHAR_4);
-			err_collector += chardisp_write_char(C_CHAR_4);
-			err_collector += chardisp_write_char(C_CHAR_4);
-			err_collector += chardisp_write_char(C_CHAR_4);
-			err_collector += chardisp_write_char(C_CHAR_1);
-			err_collector += chardisp_set_xy_position(7, 1);
-			err_collector += chardisp_write_char(C_CHAR_0);
-			err_collector += chardisp_write_char(C_CHAR_4);
-			err_collector += chardisp_write_char(C_CHAR_2);
-			err_collector += chardisp_write_char(CHAR_SPACE);
-			err_collector += chardisp_write_char(CHAR_SPACE);
-			err_collector += chardisp_write_char(C_CHAR_3);
-			err_collector += chardisp_write_char(C_CHAR_4);
-			err_collector += chardisp_write_char(C_CHAR_1);
-			err_collector += chardisp_set_xy_position(7, 2);
-			err_collector += chardisp_write_char(C_CHAR_3);
-			err_collector += chardisp_write_char(C_CHAR_4);
-			err_collector += chardisp_write_char(C_CHAR_1);
-			err_collector += chardisp_write_char(CHAR_SPACE);
-			err_collector += chardisp_write_char(CHAR_SPACE);
-			err_collector += chardisp_write_char(C_CHAR_0);
-			err_collector += chardisp_write_char(C_CHAR_4);
-			err_collector += chardisp_write_char(C_CHAR_2);
-			err_collector += chardisp_set_xy_position(8, 3);
-			err_collector += chardisp_write_char(C_CHAR_3);
-			err_collector += chardisp_write_char(C_CHAR_4);
-			err_collector += chardisp_write_char(C_CHAR_4);
-			err_collector += chardisp_write_char(C_CHAR_4);
-			err_collector += chardisp_write_char(C_CHAR_4);
-			err_collector += chardisp_write_char(C_CHAR_2);
+			err_collector |= chardisp_set_xy_position(7, 0);
+			err_collector |= chardisp_fill(9, CHAR_SPACE);
+			err_collector |= chardisp_write_flash_string(chardisp_dsp_x20);
+			err_collector |= chardisp_set_xy_position(7, 1);
+			err_collector |= chardisp_fill(9, CHAR_SPACE);
+			err_collector |= chardisp_write_flash_string(chardisp_dsp_x20);
+			err_collector |= chardisp_set_xy_position(0, 2);
+			err_collector |= chardisp_write_flash_string(chardisp_dsp_row3);
+			err_collector |= chardisp_fill(10, CHAR_SPACE);
+			err_collector |= chardisp_write_flash_string(chardisp_dsp_x20);
+			err_collector |= chardisp_set_xy_position(0, 3);
+			err_collector |= chardisp_write_flash_string(chardisp_dsp_row4_2);
+			err_collector |= chardisp_fill(10, CHAR_SPACE);
+			err_collector |= chardisp_write_flash_string(chardisp_dsp_x20);
+			err_collector |= chardisp_set_xy_position(8, 0);
+			err_collector |= chardisp_write_char(C_CHAR_0);
+			err_collector |= chardisp_write_char(C_CHAR_4);
+			err_collector |= chardisp_write_char(C_CHAR_4);
+			err_collector |= chardisp_write_char(C_CHAR_4);
+			err_collector |= chardisp_write_char(C_CHAR_4);
+			err_collector |= chardisp_write_char(C_CHAR_1);
+			err_collector |= chardisp_set_xy_position(7, 1);
+			err_collector |= chardisp_write_char(C_CHAR_0);
+			err_collector |= chardisp_write_char(C_CHAR_4);
+			err_collector |= chardisp_write_char(C_CHAR_2);
+			err_collector |= chardisp_write_char(CHAR_SPACE);
+			err_collector |= chardisp_write_char(CHAR_SPACE);
+			err_collector |= chardisp_write_char(C_CHAR_3);
+			err_collector |= chardisp_write_char(C_CHAR_4);
+			err_collector |= chardisp_write_char(C_CHAR_1);
+			err_collector |= chardisp_set_xy_position(7, 2);
+			err_collector |= chardisp_write_char(C_CHAR_3);
+			err_collector |= chardisp_write_char(C_CHAR_4);
+			err_collector |= chardisp_write_char(C_CHAR_1);
+			err_collector |= chardisp_write_char(CHAR_SPACE);
+			err_collector |= chardisp_write_char(CHAR_SPACE);
+			err_collector |= chardisp_write_char(C_CHAR_0);
+			err_collector |= chardisp_write_char(C_CHAR_4);
+			err_collector |= chardisp_write_char(C_CHAR_2);
+			err_collector |= chardisp_set_xy_position(8, 3);
+			err_collector |= chardisp_write_char(C_CHAR_3);
+			err_collector |= chardisp_write_char(C_CHAR_4);
+			err_collector |= chardisp_write_char(C_CHAR_4);
+			err_collector |= chardisp_write_char(C_CHAR_4);
+			err_collector |= chardisp_write_char(C_CHAR_4);
+			err_collector |= chardisp_write_char(C_CHAR_2);
 		}
 		else if(switch_tick!=0)
 		{
@@ -737,7 +763,6 @@ uint8_t chardisp_step_animation(uint8_t switch_tick)
 			chardisp_page_step++;
 		}
 	}
-#endif /* CHARDISP_FULL */
 	else if(chardisp_page_step==ST_SPIRAL)
 	{
 		if(chardisp_step_ani_spiral(&err_collector)==ST_ANI_DONE)
@@ -752,6 +777,7 @@ uint8_t chardisp_step_animation(uint8_t switch_tick)
 			chardisp_page_step++;
 		}
 	}
+#endif /* CHARDISP_FULL */
 	else if(chardisp_page_step==ST_CP_FILL)
 	{
 		if(chardisp_step_ani_cp_fill(&err_collector)==ST_ANI_DONE)

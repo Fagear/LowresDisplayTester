@@ -1,7 +1,7 @@
-/**************************************************************************************************************************************************************
+﻿/**************************************************************************************************************************************************************
 syncavr.h
 
-Copyright � 2024 Maksim Kryukov <fagear@mail.ru>
+Copyright © 2024 Maksim Kryukov <fagear@mail.ru>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,13 +26,10 @@ Part of the [LowresDisplayTester] project.
 
 #include <stdio.h>
 #include "config.h"
-//#include "drv_cpu.h"
 #include "drv_io.h"
-#ifdef CONF_EN_HD44780
-	#include "drv_hd44780[4bit].h"
-	#include "drv_hd44780[serial].h"
+#ifdef CONF_EN_CHARDISP
 	#include "test_chardisp.h"
-#endif /* CONF_EN_HD44780 */
+#endif /* CONF_EN_CHARDISP */
 #include "test_video.h"
 #include <avr/interrupt.h>
 #include <avr/io.h>
@@ -41,9 +38,8 @@ Part of the [LowresDisplayTester] project.
 #include <util/delay.h>
 
 // Configuration and user input.
-#define SW_USR_1			(1<<0)
-#define SW_VID_SYS0			(1<<1)
-#define SW_VID_SYS1			(1<<2)
+#define SW_VID_SYS0			(1<<0)
+#define SW_VID_SYS1			(1<<1)
 
 #define SPI_DUMMY_SEND		0xA5	// Dummy byte to send via SPI to generate bars
 
@@ -54,14 +50,6 @@ enum
 	MODE_COMP_525i,					// Composite 525 lines @ 30Hz interlaced (NTSC)
 	MODE_EGA,						// CGA/EGA 60Hz
 	MODE_VGA_60Hz,					// VGA 640x480 @ 60Hz progressive
-};
-
-// States of active line timer.
-enum
-{
-	LACT_ST_WAIT_ACT,				// Counting until start of the active part with OC at low
-	LACT_ST_ACT,					// Counting until end of the active part with OC at high
-	LACT_ST_IDLE,					// Not counting / waiting for new horizontal pulse
 };
 
 // Line active part flags.

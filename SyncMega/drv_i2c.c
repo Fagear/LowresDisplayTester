@@ -1,4 +1,4 @@
-#include "drv_CPU.h"					// Contains [F_CPU].
+﻿#include "drv_CPU.h"					// Contains [F_CPU].
 #include "drv_I2C.h"
 
 #ifdef FGR_DRV_I2C_HW_FOUND
@@ -115,7 +115,9 @@ uint8_t I2C_write_data(uint8_t addr, uint8_t cnt, uint8_t *data)
 	{
 		return I2C_BUSY;
 	}
+#ifdef CONF_EN_HD44780P
 	HD44780_write_string((uint8_t *)"NEW_DATA|");
+#endif
 	I2C_set_target_address(addr);
 	I2C_set_data(cnt, data);
 	u8_i2c_tasks |= (1<<I2C_MODE_WR);
@@ -129,8 +131,10 @@ void I2C_master_processor(void)
 	uint8_t tmp_data;
 	// Get I2C hardware state.
 	tmp_data = I2C_STATUS&I2C_STAT_MASK;
+#ifdef CONF_EN_HD44780P
 	HD44780_write_string((uint8_t *)"PRC-");
 	HD44780_write_8bit_number(tmp_data, HD44780_NUMBER_HEX); HD44780_write_string((uint8_t *)"|");
+#endif
 	// Reset I2C timeout timer.
 	u8_i2c_ping_timeout=0;
 	// Universal states.
@@ -142,9 +146,11 @@ void I2C_master_processor(void)
 			// Check if there is something to write to I2C target.
 			if((u8_i2c_tasks&(1<<I2C_MODE_WR))!=0)
 			{
+#ifdef CONF_EN_HD44780P
 				HD44780_write_8bit_number(u8_i2c_write_idx, HD44780_NUMBER_HEX); HD44780_write_string((uint8_t *)"-");
 				HD44780_write_8bit_number(u8_i2c_total_write_bytes, HD44780_NUMBER_HEX); HD44780_write_string((uint8_t *)"-");
 				HD44780_write_string((uint8_t *)"RUN_WR|");
+#endif
 				// Initiate transmittion.
 				I2C_DO_START;
 				u8_i2c_mode = I2C_MODE_WR;
@@ -154,9 +160,11 @@ void I2C_master_processor(void)
 			// Check if there is something to read from I2C target.
 			if((u8_i2c_tasks&(1<<I2C_MODE_RD))!=0)
 			{
+#ifdef CONF_EN_HD44780P
 				HD44780_write_8bit_number(u8_i2c_read_idx, HD44780_NUMBER_HEX); HD44780_write_string((uint8_t *)"-");
 				HD44780_write_8bit_number(u8_i2c_total_read_bytes, HD44780_NUMBER_HEX); HD44780_write_string((uint8_t *)"-");
 				HD44780_write_string((uint8_t *)"RUN_RD|");
+#endif
 				// Initiate transmittion.
 				I2C_DO_START;
 				u8_i2c_mode = I2C_MODE_RD;
@@ -167,7 +175,9 @@ void I2C_master_processor(void)
 	}
 	else if((tmp_data==I2C_STAT_BUS_ERR)||(tmp_data==I2C_STAT_NOARB))
 	{
+#ifdef CONF_EN_HD44780P
 		HD44780_write_string((uint8_t *)"ARB_L|");
+#endif
 		// Bus error, lost arbitration.
 		u8_i2c_error = I2C_ERR_LOST_ARB;
 		// Switch I2C off, terminate everything until next call.
@@ -183,7 +193,9 @@ void I2C_master_processor(void)
 	}
 	else if((tmp_data==I2C_STAT_W_ADR_N)||(tmp_data==I2C_STAT_W_DATA_N)||(tmp_data==I2C_STAT_R_ADR_N))
 	{
+#ifdef CONF_EN_HD44780P
 		HD44780_write_string((uint8_t *)"TX NACK|");
+#endif
 		// NACK while sending.
 		if(tmp_data==I2C_STAT_W_DATA_N)
 		{
@@ -211,21 +223,29 @@ void I2C_master_processor(void)
 		// START is sent.
 		if(u8_i2c_mode==I2C_MODE_WR)
 		{
+#ifdef CONF_EN_HD44780P
 			HD44780_write_string((uint8_t *)"A+W-");
+#endif
 			// Send A+W.
 			I2C_DATA = u8a_i2c_write_buffer[I2C_BUF_ADDR];
 			u8_i2c_write_idx++;
+#ifdef CONF_EN_HD44780P
 			HD44780_write_8bit_number(u8a_i2c_write_buffer[I2C_BUF_ADDR], HD44780_NUMBER_HEX); HD44780_write_string((uint8_t *)"-");
 			HD44780_write_8bit_number(u8_i2c_write_idx, HD44780_NUMBER_HEX); HD44780_write_string((uint8_t *)"|");
+#endif
 		}
 		else
 		{
+#ifdef CONF_EN_HD44780P
 			HD44780_write_string((uint8_t *)"A+R-");
+#endif
 			// Send A+R.
 			I2C_DATA = u8a_i2c_read_buffer[I2C_BUF_ADDR];
 			u8_i2c_read_idx++;
+#ifdef CONF_EN_HD44780P
 			HD44780_write_8bit_number(u8a_i2c_read_buffer[I2C_BUF_ADDR], HD44780_NUMBER_HEX); HD44780_write_string((uint8_t *)"-");
 			HD44780_write_8bit_number(u8_i2c_read_idx, HD44780_NUMBER_HEX); HD44780_write_string((uint8_t *)"|");
+#endif
 		}
 		I2C_MASTER_NEXT_STEP;
 	}
@@ -234,14 +254,18 @@ void I2C_master_processor(void)
 		// RESTART is sent.
 		if(u8_i2c_mode==I2C_MODE_WR)
 		{
+#ifdef CONF_EN_HD44780P
 			HD44780_write_string((uint8_t *)"A+W|");
+#endif
 			// Send A+W.
 			I2C_DATA = u8a_i2c_write_buffer[I2C_BUF_ADDR];
 			u8_i2c_write_idx++;
 		}
 		else
 		{
+#ifdef CONF_EN_HD44780P
 			HD44780_write_string((uint8_t *)"A+R|");
+#endif
 			// Send A+R.
 			I2C_DATA = u8a_i2c_read_buffer[I2C_BUF_ADDR];
 			u8_i2c_read_idx++;
@@ -253,17 +277,23 @@ void I2C_master_processor(void)
 		// A+W is sent, ACK received.
 		if(u8_i2c_write_idx<u8_i2c_total_write_bytes)
 		{
+#ifdef CONF_EN_HD44780P
 			HD44780_write_string((uint8_t *)"A+W,ACK,DATA|");
+#endif
 			// Not all data was sent.
 			// Send next byte from the buffer.
 			I2C_DATA = u8a_i2c_write_buffer[u8_i2c_write_idx];
 			u8_i2c_write_idx++;
 			I2C_MASTER_NEXT_STEP;
+#ifdef CONF_EN_HD44780P
 			HD44780_write_8bit_number(u8_i2c_write_idx, HD44780_NUMBER_HEX); HD44780_write_string((uint8_t *)"|");
+#endif
 		}
 		else
 		{
+#ifdef CONF_EN_HD44780P
 			HD44780_write_string((uint8_t *)"A+W,ACK,STOP|");
+#endif
 			// Everything is sent.
 			I2C_DO_STOP;
 			u8_i2c_error = I2C_ERR_NO_DONE;
@@ -275,17 +305,23 @@ void I2C_master_processor(void)
 		// Data byte is sent, ACK received.
 		if(u8_i2c_write_idx<u8_i2c_total_write_bytes)
 		{
+#ifdef CONF_EN_HD44780P
 			HD44780_write_string((uint8_t *)"W,ACK,DATA|");
+#endif
 			// Not all data was sent.
 			// Send next byte from the buffer.
 			I2C_DATA = u8a_i2c_write_buffer[u8_i2c_write_idx];
 			u8_i2c_write_idx++;
 			I2C_MASTER_NEXT_STEP;
+#ifdef CONF_EN_HD44780P
 			HD44780_write_8bit_number(u8_i2c_write_idx, HD44780_NUMBER_HEX); HD44780_write_string((uint8_t *)"|");
+#endif			
 		}
 		else
 		{
+#ifdef CONF_EN_HD44780P
 			HD44780_write_string((uint8_t *)"W,ACK,STOP|");
+#endif			
 			// Transmittion finished.
 			I2C_DO_STOP;
 			u8_i2c_error = I2C_ERR_NO_DONE;
@@ -298,14 +334,18 @@ void I2C_master_processor(void)
 		// A+R is sent, ACK received.
 		if(u8_i2c_total_write_bytes<=(u8_i2c_write_idx+1))
 		{
+#ifdef CONF_EN_HD44780P
 			HD44780_write_string((uint8_t *)"A+R,ACK,ONE|");
+#endif			
 			// Set NACK action for the next received byte.
 			// (receive only one byte more)
 			I2C_READ_ONE;
 		}
 		else
 		{
+#ifdef CONF_EN_HD44780P
 			HD44780_write_string((uint8_t *)"A+R,ACK,NEXT|");
+#endif		
 			// Set ACK action for the next received byte.
 			// (receive not the last byte)
 			I2C_READ_NEXT;
@@ -319,21 +359,29 @@ void I2C_master_processor(void)
 		u8_i2c_read_idx++;
 		if(u8_i2c_total_read_bytes<=(u8_i2c_read_idx+1))
 		{
+#ifdef CONF_EN_HD44780P
 			HD44780_write_string((uint8_t *)"R,ACK,ONE|");
+#endif			
 			// Next received byte will be NACKed and be the last one.
 			I2C_READ_ONE;
 		}
 		else
 		{
+#ifdef CONF_EN_HD44780P
 			HD44780_write_string((uint8_t *)"R,ACK,NEXT|");
+#endif			
 			// Next received byte will be ACKed.
 			I2C_READ_NEXT;
 		}
+#ifdef CONF_EN_HD44780P
 		HD44780_write_8bit_number(u8_i2c_read_idx, HD44780_NUMBER_HEX); HD44780_write_string((uint8_t *)"|");
+#endif		
 	}
 	else if(tmp_data==I2C_STAT_R_DATA_N)
 	{
+#ifdef CONF_EN_HD44780P
 		HD44780_write_string((uint8_t *)"R,NACK,STOP|");
+#endif		
 		// Last data byte is received, NACK returned.
 		tmp_data = I2C_DATA;
 		// Put received byte into the buffer.
@@ -341,7 +389,9 @@ void I2C_master_processor(void)
 		{
 			u8a_i2c_read_buffer[(u8_i2c_read_idx-1)] = tmp_data;
 		}
+#ifdef CONF_EN_HD44780P
 		HD44780_write_8bit_number(u8_i2c_read_idx, HD44780_NUMBER_HEX); HD44780_write_string((uint8_t *)"|");
+#endif		
 		// STOP.
 		I2C_DO_STOP;
 		// Reset.

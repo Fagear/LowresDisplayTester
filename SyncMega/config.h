@@ -1,7 +1,7 @@
-/**************************************************************************************************************************************************************
+﻿/**************************************************************************************************************************************************************
 config.h
 
-Copyright � 2024 Maksim Kryukov <fagear@mail.ru>
+Copyright © 2024 Maksim Kryukov <fagear@mail.ru>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,24 +30,23 @@ Pre-compile configuration file.
 // Video sync generation available for all supported MCUs,
 // other options can/should be switched off.
 //#define CONF_NO_DEBUG_PINS			// Disable debugging pins
-//#define CONF_EN_HD44780				// Enable support for character displays with HD44780/KS0066/��1013��6/SPLC780 parallel controllers
+#define CONF_EN_HD44780P			// Enable support for character displays with HD44780/KS0066/КБ1013ВГ6/SPLC780 parallel controllers
 //#define CONF_EN_I2C					// Enable support for I2C displays and expanders
-#define CONF_EN_UART				// Enable support for UART displays testing
+//#define CONF_EN_UART				// Enable support for UART displays testing
 
-#ifdef CONF_EN_HD44780
-	#define CONF_EN_CHARDISP		// Enable support for character displays testing
-#elif defined CONF_EN_UART
+#ifdef CONF_EN_HD44780P
 	#define CONF_EN_CHARDISP		// Enable support for character displays testing
 #elif defined CONF_EN_I2C
+	#define CONF_EN_HD44780S		// Enable support for character displays with HD44780/KS0066/КБ1013ВГ6/SPLC780 controllers via serial link
 	#define CONF_EN_CHARDISP		// Enable support for character displays testing
-#endif /* CONF_EN_HD44780 */
+#endif /* CONF_EN_HD44780P */
 
 #ifdef CONF_EN_UART
 	#define UART_IN_LEN			8	// UART receiving buffer length
 	#define UART_OUT_LEN		384U// UART transmitting buffer length
 #endif /* CONF_EN_UART */
 
-// I2C devices (including zeroed R/W bit).
+// I2C device addresses (including zeroed R/W bit).
 enum
 {
 	I2C_GEN_CALL		= 0x00,		// General call
@@ -75,10 +74,5 @@ enum
 	HW_DISP_I2C_7C		= (1<<5),	// Presence of a I2C device at 0x7C address
 	HW_DISP_I2C_E0		= (1<<6),	// Presence of at least one I2C device in 0xE0...0xEE range
 };
-
-// Horizontal clocks
-// 16000000 / 508 = 8000000 / 254 = 4000000 / 127 = 31496 (31476)
-// 16000000 / 1024 = 8000000 / 512 = 4000000 / 256 = 2000000 / 128 = 1000000 / 64 = 15625
-// 16000000 / 1017 = 0 (15734,279)
 
 #endif /* CONFIG_H_ */

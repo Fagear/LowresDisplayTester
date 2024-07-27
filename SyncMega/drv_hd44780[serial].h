@@ -1,7 +1,7 @@
-/**************************************************************************************************************************************************************
+ï»¿/**************************************************************************************************************************************************************
 drv_hd44780[serial].h
 
-Copyright © 2024 Maksim Kryukov <fagear@mail.ru>
+Copyright Â© 2024 Maksim Kryukov <fagear@mail.ru>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,12 +18,12 @@ limitations under the License.
 Created: 2024-02
 
 Part of the [LowresDisplayTester] project.
-HD44780-compatible (HD44780/KS0066/ÊÁ1013ÂÃ6/PT6314/SPLC780/US2066) character display serial driver
+HD44780-compatible (HD44780/KS0066/ÐšÐ‘1013Ð’Ð“6/PT6314/SPLC780/US2066) character display serial driver
 for AVR MCUs and AVRStudio/WinAVR/AtmelStudio compilers.
 
 Initialization routine [HD44780s_init()] is provided.
 Single-byte operations are performed through [HD44780s_write_command_byte()] and [HD44780_read_byte()].
-Driver supports cyrillic displays on ÊÁ1013ÂÃ6 controller with CP1251 codepage
+Driver supports cyrillic displays on ÐšÐ‘1013Ð’Ð“6 controller with CP1251 codepage
 and re-encoding ASCII values for other displays if [HD44780_RU_REENCODE] is set.
 
 There are several service functions, for example:
@@ -39,19 +39,20 @@ Pages can be swapped with [HD44780_swap_display_pages()].
 Buffers for printing and for display output can be selected manually
 with [HD44780_select_fill_page()] and [HD44780_select_display_page()] at any time.
 
-Service functions for buffered access start from "HD44780_buf_" instead of "HD44780_".
-
 **************************************************************************************************************************************************************/
 
 #ifndef DRV_HD44780_SERIAL_H_
 #define DRV_HD44780_SERIAL_H_
 
-#include "config.h"
+//#include "config.h"
+#include "drv_io.h"
 #include <avr/io.h>
 #include <avr/pgmspace.h>
 #include <util/delay.h>
 
-#ifdef CONF_EN_HD44780
+#ifdef CONF_EN_HD44780S
+
+#define FGR_DRV_HD44780S_FOUND
 
 // US2066/ST7032 controller transmittion structure.
 // Serial packet structure.
@@ -77,7 +78,6 @@ enum
 
 // HD44780 serial display PCF8574 pinout.
 #ifndef HD44780S_A0
-	#pragma message("HD44780 serial driver is using internal defines for IO pins")
 	#define HD44780S_A0			(1<<0)
 	#define HD44780S_RW			(1<<1)
 	#define HD44780S_E			(1<<2)
@@ -149,6 +149,6 @@ uint8_t HD44780s_upload_symbol_flash(uint8_t symbol_number, const int8_t *symbol
 uint8_t HD44780s_write_string(uint8_t *str_output);
 uint8_t HD44780s_write_flash_string(const int8_t *str_output);
 
-#endif /* CONF_EN_HD44780 */
+#endif /* CONF_EN_HD44780S */
 
 #endif /* DRV_HD44780_SERIAL_H_ */

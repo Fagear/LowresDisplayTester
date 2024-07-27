@@ -1,7 +1,7 @@
-/**************************************************************************************************************************************************************
+﻿/**************************************************************************************************************************************************************
 drv_io_mxx8.h
 
-Copyright � 2024 Maksim Kryukov <fagear@mail.ru>
+Copyright © 2024 Maksim Kryukov <fagear@mail.ru>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ Created: 2022-05
 
 Part of the [LowresDisplayTester] project.
 Part of the I/O and peripheral hardware driver for AVR MCUs.
-This driver provides HAL and startup initialization of the hardware.
+This driver provides HAL for the hardware.
 
 Supported MCUs:	ATmega48(-/A/P/AP), ATmega88(-/A/P/AP), ATmega168(-/A/P/AP), ATmega328(-/P).
 
@@ -99,26 +99,26 @@ Supported MCUs:	ATmega48(-/A/P/AP), ATmega88(-/A/P/AP), ATmega168(-/A/P/AP), ATm
 #define LACT_PULSE_DUR		OCR2A												// Compare register
 
 // HD44780-compatible character display.
-#ifdef CONF_EN_HD44780
-#define HD44780CTRL_DIR		DDRD
-#define HD44780CTRL_PORT	PORTD
-#define HD44780DATA_DIR		DDRC
-#define HD44780DATA_PORT	PORTC
-#define HD44780DATA_SRC		PINC
-#define HD44780_A0			(1<<7)
-#define HD44780_RW			(1<<5)
-#define HD44780_E			(1<<3)
-#define HD44780_D4			(1<<0)
-#define HD44780_D5			(1<<1)
-#define HD44780_D6			(1<<2)
-#define HD44780_D7			(1<<3)
-#endif /* CONF_EN_HD44780 */
+#ifdef CONF_EN_HD44780P
+	#define HD44780CTRL_DIR		DDRD
+	#define HD44780CTRL_PORT	PORTD
+	#define HD44780DATA_DIR		DDRC
+	#define HD44780DATA_PORT	PORTC
+	#define HD44780DATA_SRC		PINC
+	#define HD44780_A0			(1<<7)
+	#define HD44780_RW			(1<<5)
+	#define HD44780_E			(1<<3)
+	#define HD44780_D4			(1<<0)
+	#define HD44780_D5			(1<<1)
+	#define HD44780_D6			(1<<2)
+	#define HD44780_D7			(1<<3)
+#endif /* CONF_EN_HD44780P */
 
 #ifdef FGR_DRV_UART_HW_FOUND
-// UART busy pin.
-#define UART_BUSY_DIR		DDRD
-#define UART_BUSY_PORT		PORTD
-#define UART_BUSY_PIN		(1<<4)
+	// UART busy pin.
+	#define UART_BUSY_DIR		DDRD
+	#define UART_BUSY_PORT		PORTD
+	#define UART_BUSY_PIN		(1<<4)
 #endif	/* FGR_DRV_UART_HW_FOUND */
 
 // Watchdog setup.
@@ -131,6 +131,7 @@ Supported MCUs:	ATmega48(-/A/P/AP), ATmega88(-/A/P/AP), ATmega168(-/A/P/AP), ATm
 
 // Power consumption optimizations.
 #define PWR_COMP_OFF		ACSR |= (1<<ACD)			// Turn off Analog Comparator
+#define PWR_IO_MODULES
 #define PWR_ADC_OFF			PRR |= (1<<PRADC)			// Turn off Analog-to-Digital Converter
 #define PWR_T0_OFF			PRR |= (1<<PRTIM0)			// Turn off Timer/Counter0
 #define PWR_T1_OFF			PRR |= (1<<PRTIM1)			// Turn off Timer/Counter1
@@ -140,8 +141,8 @@ Supported MCUs:	ATmega48(-/A/P/AP), ATmega88(-/A/P/AP), ATmega168(-/A/P/AP), ATm
 #define PWR_UART_OFF		PRR |= (1<<PRUSART0)		// Turn off Universal Synchronous and Asynchronous serial Receiver and Transmitter
 #define PWR_ADC_OPT			DIDR0 |= (1<<ADC0D)|(1<<ADC1D)|(1<<ADC2D)|(1<<ADC3D)|(1<<ADC4D)		// Turn off digital buffers on used ADC inputs
 
-#ifdef CONF_EN_HD44780
-	//#define CONF_NO_DEBUG_PINS
+#ifdef CONF_EN_HD44780P
+	#define CONF_NO_DEBUG_PINS
 #endif
 
 // Debug output.
@@ -174,53 +175,5 @@ Supported MCUs:	ATmega48(-/A/P/AP), ATmega88(-/A/P/AP), ATmega168(-/A/P/AP), ATm
 	#define DBG_4_ON
 	#define DBG_4_OFF
 #endif /* CONF_NO_DEBUG_PINS */
-
-//-------------------------------------- IO initialization.
-inline void HW_init(void)
-{
-	// Init SPI interface.
-#ifdef FGR_DRV_SPI_HW_FOUND
-	SPI_init_HW();
-#endif /* FGR_DRV_SPI_HW_FOUND */
-#ifdef FGR_DRV_UART_HW_FOUND
-	UART_init_HW();
-#endif /* FGR_DRV_UART_HW_FOUND */
-#ifdef FGR_DRV_UARTSPI_HW_FOUND
-	UART_SPI_init_HW();
-#endif /* FGR_DRV_UARTSPI_HW_FOUND */
-#ifdef FGR_DRV_I2C_HW_FOUND
-	I2C_init_HW();
-#endif /* FGR_DRV_I2C_HW_FOUND */
-	
-	// Enable debug pins.
-	DBG_SETUP1; DBG_SETUP2;
-	
-	// Set inputs.
-	BTN_SETUP1; BTN_SETUP2; BTN_SETUP3; BTN_SETUP4;
-	
-	// Set outputs.
-	VSYNC_SETUP1; VSYNC_SETUP2;
-	// Timer1 output compare A pin is used to generate sync signal for video.
-	// Timer is re-tuned every horizontal line to produce various impulses.
-	SYNC_CONFIG_PIN1; SYNC_CONFIG_PIN2;
-	
-	// Configure output for video sync.
-	SYNC_CONFIG_NEG; SYNC_CONFIG_RUN;
-	SYNC_STEP_DUR = 0xFFFF;
-	SYNC_PULSE_DUR = SYNC_STEP_DUR/2;
-	
-	// Configure active line timer.
-	LACT_CONFIG_REG1; LACT_CONFIG_REG2;
-	//LACT_PULSE_DUR = 0xFF;
-	//LACT_START;
-	
-	// Enable draw starting interrupts.
-	// INT0 tied to Timer1 compare output is used to re-configure PWM for H-sync.
-	SYNC_IN_CFG_PIN1; SYNC_IN_CFG_PIN2;
-	SYNC_INT_CFG_REG;
-
-	// Turn off not used devices for power saving.
-	PWR_COMP_OFF; PWR_ADC_OFF; PWR_T0_OFF;
-}
 
 #endif /* FGR_DRV_IO_MXX8_H_ */

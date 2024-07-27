@@ -1,7 +1,7 @@
-/**************************************************************************************************************************************************************
+﻿/**************************************************************************************************************************************************************
 drv_i2c.h
 
-Copyright � 2024 Maksim Kryukov <fagear@mail.ru>
+Copyright © 2024 Maksim Kryukov <fagear@mail.ru>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -34,8 +34,7 @@ Supported MCUs:	ATmega8(-/A), ATmega16(-/A), ATmega32(-/A), ATmega48(-/A/P/AP), 
 #define FGR_DRV_I2C
 
 #include <avr/io.h>
-#include "config.h"
-#include "drv_hd44780[4bit].h"
+#include "drv_io.h"
 
 #undef FGR_DRV_I2C_Mxx
 #undef FGR_DRV_I2C_Mxx8

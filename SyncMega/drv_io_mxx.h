@@ -1,7 +1,7 @@
-/**************************************************************************************************************************************************************
+﻿/**************************************************************************************************************************************************************
 drv_io_mxx.h
 
-Copyright � 2024 Maksim Kryukov <fagear@mail.ru>
+Copyright © 2024 Maksim Kryukov <fagear@mail.ru>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ Created: 2022-05
 
 Part of the [LowresDisplayTester] project.
 Part of the I/O and peripheral hardware driver for AVR MCUs.
-This driver provides HAL and startup initialization of the hardware.
+This driver provides HAL for the hardware.
 
 Supported MCUs:	ATmega8(-/A), ATmega16(-/A), ATmega32(-/A).
 
@@ -129,51 +129,51 @@ Supported MCUs:	ATmega8(-/A), ATmega16(-/A), ATmega32(-/A).
 #define LACT_PULSE_DUR		OCR2								// Compare register
 
 // HD44780-compatible character display.
-#ifdef CONF_EN_HD44780
-#ifdef FGR_DRV_IO_M8
-	// ATmega8(-/A).
-	#define HD44780CTRL_DIR		DDRD
-	#define HD44780CTRL_PORT	PORTD
-	#define HD44780DATA_DIR		DDRC
-	#define HD44780DATA_PORT	PORTC
-	#define HD44780DATA_SRC		PINC
-	#define HD44780_A0			(1<<7)
-	#define HD44780_RW			(1<<5)
-	#define HD44780_E			(1<<3)
-	#define HD44780_D4			(1<<0)
-	#define HD44780_D5			(1<<1)
-	#define HD44780_D6			(1<<2)
-	#define HD44780_D7			(1<<3)
-#else
-	// ATmega16(-/A), ATmega32(-/A).
-	#define HD44780CTRL_DIR		DDRA
-	#define HD44780CTRL_PORT	PORTA
-	#define HD44780DATA_DIR		DDRA
-	#define HD44780DATA_PORT	PORTA
-	#define HD44780DATA_SRC		PINA
-	#define HD44780_A0			(1<<7)
-	#define HD44780_RW			(1<<6)
-	#define HD44780_E			(1<<5)
-	#define HD44780_D4			(1<<3)
-	#define HD44780_D5			(1<<2)
-	#define HD44780_D6			(1<<1)
-	#define HD44780_D7			(1<<0)
-#endif /* FGR_DRV_IO_M8 */
-#endif /* CONF_EN_HD44780 */
+#ifdef CONF_EN_HD44780P
+	#ifdef FGR_DRV_IO_M8
+		// ATmega8(-/A).
+		#define HD44780CTRL_DIR		DDRD
+		#define HD44780CTRL_PORT	PORTD
+		#define HD44780DATA_DIR		DDRC
+		#define HD44780DATA_PORT	PORTC
+		#define HD44780DATA_SRC		PINC
+		#define HD44780_A0			(1<<7)
+		#define HD44780_RW			(1<<5)
+		#define HD44780_E			(1<<3)
+		#define HD44780_D4			(1<<0)
+		#define HD44780_D5			(1<<1)
+		#define HD44780_D6			(1<<2)
+		#define HD44780_D7			(1<<3)
+	#else
+		// ATmega16(-/A), ATmega32(-/A).
+		#define HD44780CTRL_DIR		DDRA
+		#define HD44780CTRL_PORT	PORTA
+		#define HD44780DATA_DIR		DDRA
+		#define HD44780DATA_PORT	PORTA
+		#define HD44780DATA_SRC		PINA
+		#define HD44780_A0			(1<<7)
+		#define HD44780_RW			(1<<6)
+		#define HD44780_E			(1<<5)
+		#define HD44780_D4			(1<<3)
+		#define HD44780_D5			(1<<2)
+		#define HD44780_D6			(1<<1)
+		#define HD44780_D7			(1<<0)
+	#endif /* FGR_DRV_IO_M8 */
+#endif /* CONF_EN_HD44780P */
 
 #ifdef FGR_DRV_UART_HW_FOUND
-// UART busy pin.
-#ifdef FGR_DRV_IO_M8
-	// ATmega8(-/A).
-	#define UART_BUSY_DIR		DDRD
-	#define UART_BUSY_PORT		PORTD
-	#define UART_BUSY_PIN		(1<<4)
-#else
-	// ATmega16(-/A), ATmega32(-/A).
-	#define UART_BUSY_DIR		DDRD
-	#define UART_BUSY_PORT		PORTD
-	#define UART_BUSY_PIN		(1<<3)
-#endif /* FGR_DRV_IO_M8 */
+	// UART busy pin.
+	#ifdef FGR_DRV_IO_M8
+		// ATmega8(-/A).
+		#define UART_BUSY_DIR		DDRD
+		#define UART_BUSY_PORT		PORTD
+		#define UART_BUSY_PIN		(1<<4)
+	#else
+		// ATmega16(-/A), ATmega32(-/A).
+		#define UART_BUSY_DIR		DDRD
+		#define UART_BUSY_PORT		PORTD
+		#define UART_BUSY_PIN		(1<<3)
+	#endif /* FGR_DRV_IO_M8 */
 #endif	/* FGR_DRV_UART_HW_FOUND */
 
 // Watchdog setup.
@@ -198,49 +198,49 @@ Supported MCUs:	ATmega8(-/A), ATmega16(-/A), ATmega32(-/A).
 // Power consumption optimizations.
 #define PWR_COMP_OFF			ACSR |= (1<<ACD)			// Turn off Analog Comparator
 
-#ifdef CONF_EN_HD44780
+#ifdef CONF_EN_HD44780P
 	#define CONF_NO_DEBUG_PINS
 #endif
 
 // Debug output.
 #ifndef CONF_NO_DEBUG_PINS
-#ifdef FGR_DRV_IO_M8
-	// ATmega8(-/A).
-	#define DBG_PORT1			PORTC
-	#define DBG_DIR1			DDRC
-	#define DBG_OUT1			(1<<0)
-	#define DBG_OUT2			(1<<1)
-	#define DBG_OUT3			(1<<2)
-	#define DBG_OUT4			(1<<3)
-	#define DBG_SETUP1			DBG_PORT1 &= ~(DBG_OUT1|DBG_OUT2|DBG_OUT3|DBG_OUT4)
-	#define DBG_SETUP2			DBG_DIR1 |= (DBG_OUT1|DBG_OUT2|DBG_OUT3|DBG_OUT4)
-	#define DBG_1_ON			DBG_PORT1 |= DBG_OUT1
-	#define DBG_1_OFF			DBG_PORT1 &= ~DBG_OUT1
-	#define DBG_2_ON			DBG_PORT1 |= DBG_OUT2
-	#define DBG_2_OFF			DBG_PORT1 &= ~DBG_OUT2
-	#define DBG_3_ON			DBG_PORT1 |= DBG_OUT3
-	#define DBG_3_OFF			DBG_PORT1 &= ~DBG_OUT3
-	#define DBG_4_ON			DBG_PORT1 |= DBG_OUT4
-	#define DBG_4_OFF			DBG_PORT1 &= ~DBG_OUT4
-#else
-	// ATmega16(-/A), ATmega32(-/A).
-	#define DBG_PORT1			PORTC
-	#define DBG_DIR1			DDRC
-	#define DBG_OUT1			(1<<2)
-	#define DBG_OUT2			(1<<3)
-	#define DBG_OUT3			(1<<4)
-	#define DBG_OUT4			(1<<5)
-	#define DBG_SETUP1			DBG_PORT1 &= ~(DBG_OUT1|DBG_OUT2|DBG_OUT3|DBG_OUT4)
-	#define DBG_SETUP2			DBG_DIR1 |= (DBG_OUT1|DBG_OUT2|DBG_OUT3|DBG_OUT4)
-	#define DBG_1_ON			DBG_PORT1 |= DBG_OUT1
-	#define DBG_1_OFF			DBG_PORT1 &= ~DBG_OUT1
-	#define DBG_2_ON			DBG_PORT1 |= DBG_OUT2
-	#define DBG_2_OFF			DBG_PORT1 &= ~DBG_OUT2
-	#define DBG_3_ON			DBG_PORT1 |= DBG_OUT3
-	#define DBG_3_OFF			DBG_PORT1 &= ~DBG_OUT3
-	#define DBG_4_ON			DBG_PORT1 |= DBG_OUT4
-	#define DBG_4_OFF			DBG_PORT1 &= ~DBG_OUT4
-#endif /* FGR_DRV_IO_M8 */
+	#ifdef FGR_DRV_IO_M8
+		// ATmega8(-/A).
+		#define DBG_PORT1			PORTC
+		#define DBG_DIR1			DDRC
+		#define DBG_OUT1			(1<<0)
+		#define DBG_OUT2			(1<<1)
+		#define DBG_OUT3			(1<<2)
+		#define DBG_OUT4			(1<<3)
+		#define DBG_SETUP1			DBG_PORT1 &= ~(DBG_OUT1|DBG_OUT2|DBG_OUT3|DBG_OUT4)
+		#define DBG_SETUP2			DBG_DIR1 |= (DBG_OUT1|DBG_OUT2|DBG_OUT3|DBG_OUT4)
+		#define DBG_1_ON			DBG_PORT1 |= DBG_OUT1
+		#define DBG_1_OFF			DBG_PORT1 &= ~DBG_OUT1
+		#define DBG_2_ON			DBG_PORT1 |= DBG_OUT2
+		#define DBG_2_OFF			DBG_PORT1 &= ~DBG_OUT2
+		#define DBG_3_ON			DBG_PORT1 |= DBG_OUT3
+		#define DBG_3_OFF			DBG_PORT1 &= ~DBG_OUT3
+		#define DBG_4_ON			DBG_PORT1 |= DBG_OUT4
+		#define DBG_4_OFF			DBG_PORT1 &= ~DBG_OUT4
+	#else
+		// ATmega16(-/A), ATmega32(-/A).
+		#define DBG_PORT1			PORTC
+		#define DBG_DIR1			DDRC
+		#define DBG_OUT1			(1<<2)
+		#define DBG_OUT2			(1<<3)
+		#define DBG_OUT3			(1<<4)
+		#define DBG_OUT4			(1<<5)
+		#define DBG_SETUP1			DBG_PORT1 &= ~(DBG_OUT1|DBG_OUT2|DBG_OUT3|DBG_OUT4)
+		#define DBG_SETUP2			DBG_DIR1 |= (DBG_OUT1|DBG_OUT2|DBG_OUT3|DBG_OUT4)
+		#define DBG_1_ON			DBG_PORT1 |= DBG_OUT1
+		#define DBG_1_OFF			DBG_PORT1 &= ~DBG_OUT1
+		#define DBG_2_ON			DBG_PORT1 |= DBG_OUT2
+		#define DBG_2_OFF			DBG_PORT1 &= ~DBG_OUT2
+		#define DBG_3_ON			DBG_PORT1 |= DBG_OUT3
+		#define DBG_3_OFF			DBG_PORT1 &= ~DBG_OUT3
+		#define DBG_4_ON			DBG_PORT1 |= DBG_OUT4
+		#define DBG_4_OFF			DBG_PORT1 &= ~DBG_OUT4
+	#endif /* FGR_DRV_IO_M8 */
 #else
 	#define DBG_SETUP1
 	#define DBG_SETUP2
@@ -253,53 +253,5 @@ Supported MCUs:	ATmega8(-/A), ATmega16(-/A), ATmega32(-/A).
 	#define DBG_4_ON
 	#define DBG_4_OFF
 #endif /* CONF_NO_DEBUG_PINS */
-
-//-------------------------------------- IO initialization.
-inline void HW_init(void)
-{
-	// Init SPI interface.
-#ifdef FGR_DRV_SPI_HW_FOUND
-	SPI_init_HW();
-#endif /* FGR_DRV_SPI_HW_FOUND */
-#ifdef FGR_DRV_UART_HW_FOUND
-	UART_init_HW();
-#endif /* FGR_DRV_UART_HW_FOUND */
-#ifdef FGR_DRV_UARTSPI_HW_FOUND
-	UART_SPI_init_HW();
-#endif /* FGR_DRV_UARTSPI_HW_FOUND */
-#ifdef FGR_DRV_I2C_HW_FOUND
-	I2C_init_HW();
-#endif /* FGR_DRV_I2C_HW_FOUND */
-	
-	// Enable debug pins.
-	DBG_SETUP1; DBG_SETUP2;
-	
-	// Set inputs.
-	BTN_SETUP1; BTN_SETUP2; BTN_SETUP3; BTN_SETUP4;
-	
-	// Set outputs.
-	VSYNC_SETUP1; VSYNC_SETUP2;
-	// Timer1 output compare pin is used to generate sync signal for video.
-	// Timer is re-tuned every horizontal line to produce various impulses.
-	SYNC_CONFIG_PIN1; SYNC_CONFIG_PIN2;
-	
-	// Configure output for video sync.
-	SYNC_CONFIG_NEG; SYNC_CONFIG_RUN;
-	SYNC_STEP_DUR = 0xFFFF;
-	SYNC_PULSE_DUR = SYNC_STEP_DUR/2;
-	
-	// Configure active line timer.
-	LACT_CONFIG_REG1; LACT_CONFIG_REG2;
-	//LACT_PULSE_DUR = 0xFF;
-	//LACT_START;
-	
-	// Enable draw starting interrupts.
-	// INT0 tied to Timer1 compare output is used to re-configure PWM for H-sync.
-	SYNC_IN_CFG_PIN1; SYNC_IN_CFG_PIN2;
-	SYNC_INT_CFG_REG;
-
-	// Turn off not used devices for power saving.
-	PWR_COMP_OFF;
-}
 
 #endif /* FGR_DRV_IO_MXX_H_ */

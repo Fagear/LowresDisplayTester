@@ -1,7 +1,7 @@
-/**************************************************************************************************************************************************************
+﻿/**************************************************************************************************************************************************************
 test_chardisp.h
 
-Copyright � 2024 Maksim Kryukov <fagear@mail.ru>
+Copyright © 2024 Maksim Kryukov <fagear@mail.ru>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -31,10 +31,25 @@ before animations can be stepped with [chardisp_step_animation()] function.
 #define TEST_CHARDISP_H_
 
 #include <stdio.h>
-#include "config.h"
+#include "drv_io.h"
 #ifdef CONF_EN_CHARDISP
+
+	#ifdef FGR_DRV_HD44780P_FOUND
+		enum
+		{
+			CHTST_RES_OK = HD44780_OK,
+		};
+	#elif defined FGR_DRV_HD44780S_FOUND
+		enum
+		{
+			CHTST_RES_OK = HD44780S_OK,
+		};
+	#else
+		#error HD44780 driver not found!
+	#endif
+
 	// Limit number of animations for low-ROM devices
-	#if FLASHEND>0x4000
+	#if FLASHEND>0x2000
 		#define CHARDISP_FULL
 	#endif
 	
@@ -72,9 +87,9 @@ before animations can be stepped with [chardisp_step_animation()] function.
 		ST_TEXT_4x20,
 #ifdef CHARDISP_FULL
 		ST_LEVELS,			// Fill screen with bar graphs
-#endif /* CHARDISP_FULL */
 		ST_SPIRAL,			// Draw circle and spiral animations
 		ST_FADEOUT,			// Draw top to bottom fadeout animation
+#endif /* CHARDISP_FULL */
 		ST_CP_FILL,			// Print all symbols from codepage
 		ST_TEXT_PAUSE2,
 		ST_END_CLEAR,
@@ -96,9 +111,9 @@ before animations can be stepped with [chardisp_step_animation()] function.
 #ifdef CHARDISP_FULL
 	uint8_t chardisp_step_ani_rotate(uint8_t *err_mask);
 	uint8_t chardisp_step_ani_levels(uint8_t *err_mask);
-#endif /* CHARDISP_FULL */
 	uint8_t chardisp_step_ani_spiral(uint8_t *err_mask);
 	uint8_t chardisp_step_ani_fade(uint8_t *err_mask);
+#endif /* CHARDISP_FULL */
 	uint8_t chardisp_step_ani_cp_fill(uint8_t *err_mask);
 	uint8_t chardisp_step_animation(uint8_t switch_tick);
 #endif /* CONF_EN_CHARDISP */

@@ -1,7 +1,7 @@
-/**************************************************************************************************************************************************************
+ï»¿/**************************************************************************************************************************************************************
 drv_hd44780[4bit].h
 
-Copyright © 2024 Maksim Kryukov <fagear@mail.ru>
+Copyright Â© 2024 Maksim Kryukov <fagear@mail.ru>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ limitations under the License.
 Created: 2009-03
 
 Part of the [LowresDisplayTester] project.
-HD44780-compatible (HD44780/KS0066/ÊÁ1013ÂÃ6/PT6314/SPLC780/US2066) character display driver
+HD44780-compatible (HD44780/KS0066/ÐšÐ‘1013Ð’Ð“6/PT6314/SPLC780/US2066) character display driver
 for AVR MCUs and AVRStudio/WinAVR/AtmelStudio compilers.
 
 This driver utilizes 4-bit data bus connection and BUSY-flag reading based operations.
@@ -28,7 +28,7 @@ See [HD44780CTRL_PORT], [HD44780DATA_PORT] defines.
 
 Initialization routine [HD44780_init()] and self-test routine [HD44780_selftest()] are provided.
 Single-byte operations are performed through [HD44780_write_byte()] and [HD44780_read_byte()].
-Driver supports cyrillic displays on ÊÁ1013ÂÃ6 controller with CP1251 codepage
+Driver supports cyrillic displays on ÐšÐ‘1013Ð’Ð“6 controller with CP1251 codepage
 and re-encoding ASCII values for other displays if [HD44780_RU_REENCODE] is set.
 
 There are several service functions, for example:
@@ -57,7 +57,9 @@ Service functions for buffered access start from "HD44780_buf_" instead of "HD44
 #include <avr/pgmspace.h>
 #include <util/delay.h>
 
-#ifdef CONF_EN_HD44780
+#ifdef CONF_EN_HD44780P
+
+#define FGR_DRV_HD44780P_FOUND
 
 #define HD44780_USE_DIRECT_STRINGS			// Turn on direct writing to the display
 //#define HD44780_USE_SCREEN_BUFFERS			// Turn on paged buffer
@@ -248,6 +250,6 @@ uint8_t HD44780_upload_symbol_flash(uint8_t symbol_number, const int8_t *symbol_
 	uint8_t HD44780_buf_clear_line(const uint8_t line_idx);
 #endif	// HD44780_USE_SCREEN_BUFFERS
 
-#endif /* CONF_EN_HD44780 */
+#endif /* CONF_EN_HD44780P */
 
 #endif // FR_DRV_HD44780_4BIT

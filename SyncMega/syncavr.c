@@ -1,4 +1,4 @@
-#include "syncavr.h"
+﻿#include "syncavr.h"
 
 volatile uint8_t tasks = 0;							// System tasks.
 uint8_t usr_video = MODE_COMP_525i;					// Video system value set by user.
@@ -677,15 +677,16 @@ int main(void)
 	//dbg_index = 315;
 	//dbg_index = 620;
 	
-#ifdef CONF_EN_HD44780
-	//HD44780_setup(HD44780_RES_16X2, HD44780_CYR_NOCONV);
-	/*if(HD44780_init()==HD44780_OK)
+#ifdef CONF_EN_HD44780P
+	// Parallel HD44780 display initialization.
+	HD44780_setup(HD44780_RES_16X2, HD44780_CYR_NOCONV);
+	if(HD44780_init()==HD44780_OK)
 	{
 		disp_presence |= HW_DISP_44780;
 		HD44780_set_xy_position(0, 0);
 		HD44780_write_string((uint8_t *)"Display TEST|");
-	}*/
-#endif /* CONF_EN_HD44780 */
+	}
+#endif /* CONF_EN_HD44780P */
 	
 	// Enable interrupts globally.
 	sei();
@@ -715,29 +716,30 @@ int main(void)
 				wdt_reset();
 				// Second tick.
 				tasks_buf |= TASK_SEC_TICK;
-#ifdef CONF_EN_HD44780
+#ifdef CONF_EN_HD44780P
 				// Check if HD44780-compatible display is detected.
-				/*if((disp_presence&HW_DISP_44780)==0)
+				if((disp_presence&HW_DISP_44780)==0)
 				{
 					// No display found, try to re-init it.
 					if(HD44780_init()==HD44780_OK)
 					{
+						// HD44780-compatible display found on parallel bus.
 						disp_presence |= HW_DISP_44780;
+						// Restart test sequence.
 						chardisp_reset_anim();
 					}
 					else
 					{
 						disp_presence &= ~HW_DISP_44780;
 					}
-				}*/
-#endif /* CONF_EN_HD44780 */
+				}
+#endif /* CONF_EN_HD44780P */
 #ifdef CONF_EN_I2C
 				if((kbd_state&SW_VID_SYS0)!=0)
 				{
 					if((tasks_buf&TASK_I2C_SCAN)==0)
 					{
 						tasks_buf |= TASK_I2C_SCAN;
-						//HD44780_set_xy_position(0, 1);
 						// Reset I2C address.
 						i2c_addr = 0x02;
 						// Reset presence flags.
@@ -747,19 +749,19 @@ int main(void)
 				}
 #endif /* CONF_EN_I2C */
 			}
-#ifdef CONF_EN_HD44780
+#ifdef CONF_EN_HD44780P
 			// Check if HD44780-compatible display is detected.
 			if((disp_presence&HW_DISP_44780)!=0)
 			{
-				/*uint8_t err_mask = 0;
+				uint8_t err_mask = 0;
 				// Setup character display test module.
 				chardisp_set_device(HD44780_upload_symbol_flash,
 									HD44780_set_xy_position,
 									HD44780_write_data_byte,
 									HD44780_write_flash_string);
-				// HD44780-compatible display is connected.
+				// Step animation forward.
 				err_mask = chardisp_step_animation(tasks_buf&TASK_SEC_TICK);
-				if(err_mask!=HD44780_OK)
+				if(err_mask!=CHTST_RES_OK)
 				{
 					// Seems like display fell of the bus.
 					disp_presence &= ~HW_DISP_44780;
@@ -773,20 +775,22 @@ int main(void)
 						// Seems like display fell of the bus.
 						disp_presence &= ~HW_DISP_44780;
 					}
-				}*/
+				}
 			}
+#endif /* CONF_EN_HD44780P */
+#ifdef CONF_EN_HD44780S
 			if((disp_presence&HW_DISP_I2C_78)!=0)
 			{
 				uint8_t err_mask = 0;
-				//HD44780s_set_address(I2C_US2066_ADR1);
+				HD44780s_set_address(I2C_US2066_ADR1);
 				// Setup character display test module.
 				chardisp_set_device(HD44780s_upload_symbol_flash,
 									HD44780s_set_xy_position,
 									HD44780s_write_data_byte,
 									HD44780s_write_flash_string);
-				// HD44780-compatible display is connected.
+				// Step animation forward.
 				err_mask = chardisp_step_animation(tasks_buf&TASK_SEC_TICK);
-				if(err_mask!=HD44780_OK)
+				if(err_mask!=CHTST_RES_OK)
 				{
 					// Seems like display fell of the bus.
 					disp_presence &= ~HW_DISP_I2C_78;
@@ -798,7 +802,7 @@ int main(void)
 					tasks_buf |= TASK_I2C_SCAN;
 				}
 			}
-#endif /* CONF_EN_HD44780 */
+#endif /* CONF_EN_HD44780S */
 			// Clear processed tasks.
 			tasks_buf &= ~TASK_SEC_TICK;
 			//DBG_4_OFF;
@@ -823,7 +827,7 @@ int main(void)
 		if((tasks_buf&TASK_I2C)!=0)
 		{
 			tasks_buf &= ~TASK_I2C;
-			/*I2C_master_processor();
+			I2C_master_processor();
 			if(I2C_is_busy()==I2C_MODE_IDLE)
 			{
 				// No transmittion in progress.
@@ -836,7 +840,9 @@ int main(void)
 					if(i2c_err==I2C_ERR_NO_DONE)
 					{
 						// Print address of detected slave device.
+#ifdef CONF_EN_HD44780P
 						HD44780_write_8bit_number(i2c_addr, HD44780_NUMBER_HEX); HD44780_write_string((uint8_t *)"~");
+#endif
 						if((i2c_addr>=I2C_PCF8574_START)&&(i2c_addr<=I2C_PCF8574_END))
 						{
 							disp_presence |= HW_DISP_I2C_40;
@@ -871,7 +877,7 @@ int main(void)
 						tasks_buf &= ~TASK_I2C_SCAN;
 					}
 				}
-			}*/
+			}
 		}
 #endif /* CONF_EN_I2C */
 	}

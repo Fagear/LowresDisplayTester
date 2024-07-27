@@ -1,7 +1,7 @@
-#include "drv_cpu.h"						// Contains [F_CPU].
+﻿#include "drv_cpu.h"						// Contains [F_CPU].
 #include "drv_hd44780[serial].h"
 
-#ifdef CONF_EN_HD44780
+#ifdef CONF_EN_HD44780S
 
 uint8_t hd44780s_addr = 0;
 
@@ -232,4 +232,4 @@ uint8_t HD44780s_write_flash_string(const int8_t *str_output)
 	return HD44780S_ERR_BUSY;
 }
 
-#endif /* CONF_EN_HD44780 */
+#endif /* CONF_EN_HD44780S */

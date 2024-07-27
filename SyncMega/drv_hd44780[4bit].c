@@ -1,8 +1,8 @@
-#include "config.h"
+﻿#include "config.h"
 #include "drv_cpu.h"						// Contains [F_CPU].
 #include "drv_hd44780[4bit].h"
 
-#ifdef CONF_EN_HD44780
+#ifdef CONF_EN_HD44780P
 
 uint8_t disp_resolution = HD44780_RES_8X1,
 	disp_cyr = HD44780_CYR_NOCONV;
@@ -1269,4 +1269,4 @@ inline uint8_t HD44780_buf_clear_line(const uint8_t line_idx)
 }
 #endif	// HD44780_USE_SCREEN_BUFFERS
 
-#endif /* CONF_EN_HD44780 */
+#endif /* CONF_EN_HD44780P */
