@@ -148,6 +148,12 @@
     <Compile Include="drv_cpu.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="drv_hd44780[gen].c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="drv_hd44780[gen].h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="drv_hd44780[serial].c">
       <SubType>compile</SubType>
     </Compile>

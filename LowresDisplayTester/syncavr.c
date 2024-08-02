@@ -34,9 +34,9 @@ ISR(SYNC_INT)
 		DBG_4_OFF;
 	}*/
 	// Stabilize active region.
-	DBG_2_ON;
+	//DBG_2_ON;
 	while(SYNC_DATA_8B<H_STBL_DELAY) {};
-	DBG_2_OFF;
+	//DBG_2_OFF;
 	// Start line active part end timer.
 	//LACT_START; LACT_DATA = act_delay;
 
@@ -397,7 +397,7 @@ ISR(SYNC_INT)
 	{
 		// Stabilize bar drawing.
 		while(SYNC_DATA_8B<A_MONO_STBL_DELAY) {};
-		DBG_3_ON;
+		//DBG_3_ON;
 		// Set minimal frequency for first set of vertical bars.
 		//SPI_set_target_clock(BAR_FREQ_500Hz);
 		SPI_CONTROL &= ~(1<<SPR0);
@@ -405,20 +405,20 @@ ISR(SYNC_INT)
 		SPI_STATUS = (1<<SPI2X);
 		// Start drawing first set of vertical bars.
 		SPI_DATA = SPI_DUMMY_SEND;
-		DBG_3_OFF;
+		//DBG_3_OFF;
 	}
 	else if((active_region&ACT_RGB_LINES)!=0)
 	{
 		// Stabilize bar drawing.
 		while(SYNC_DATA_8B<A_RGB_STBL_DELAY) {};
-		DBG_3_ON;
+		//DBG_3_ON;
 		//SPI_set_target_clock(BAR_FREQ_1MHz);
 		SPI_CONTROL |= (1<<SPR0);
 		SPI_CONTROL &= ~(1<<SPR1);
 		SPI_STATUS &= ~(1<<SPI2X);
 		// Start drawing first set of vertical bars.
 		SPI_DATA = SPI_DUMMY_SEND;
-		DBG_3_OFF;
+		//DBG_3_OFF;
 	}
 }
 
@@ -436,7 +436,7 @@ ISR(LACT_COMP_INT)
 //-------------------------------------- Horizontal line active part timing (re-arm "active" signal).
 ISR(LACT_OVF_INT)
 {
-	DBG_4_ON;
+	//DBG_4_ON;
 
 	// Timer self-shutdown.
 	LACT_STOP;
@@ -447,7 +447,7 @@ ISR(LACT_OVF_INT)
 		HACT_ON;
 	}
 
-	DBG_4_OFF;
+	//DBG_4_OFF;
 }
 
 #ifdef FGR_DRV_SPI_HW_FOUND
@@ -683,8 +683,9 @@ int main(void)
 	if(HD44780_init()==HD44780_OK)
 	{
 		disp_presence |= HW_DISP_44780;
-		HD44780_set_xy_position(0, 0);
-		HD44780_write_string((uint8_t *)"Display TEST|");
+		hd44780_set_device(HD44780_write_command_byte, HD44780_write_data_byte, HD44780_read_byte);
+		hd44780_set_xy_position(0, 0);
+		hd44780_write_string((uint8_t *)"Display TEST|");
 	}
 #endif /* CONF_EN_HD44780P */
 
@@ -754,11 +755,15 @@ int main(void)
 			if((disp_presence&HW_DISP_44780)!=0)
 			{
 				uint8_t err_mask = 0;
-				// Setup character display test module.
-				chardisp_set_device(HD44780_upload_symbol_flash,
-									HD44780_set_xy_position,
+				// Setup general HD44780 operations.
+				hd44780_set_device(HD44780_write_command_byte,
 									HD44780_write_data_byte,
-									HD44780_write_flash_string);
+									HD44780_read_byte);
+				// Setup character display test module.
+				chardisp_set_device(hd44780_upload_symbol_flash,
+									hd44780_set_xy_position,
+									HD44780_write_data_byte,
+									hd44780_write_flash_string);
 				// Step animation forward.
 				err_mask = chardisp_step_animation(tasks_buf&TASK_SEC_TICK);
 				if(err_mask!=CHTST_RES_OK)
@@ -770,7 +775,7 @@ int main(void)
 				if(chardisp_cycle_done()==ST_ANI_DONE)
 				{
 					// Check display hardware.
-					if(HD44780_selftest()!=HD44780_OK)
+					if(hd44780_selftest()!=HD44780_OK)
 					{
 						// Seems like display fell of the bus.
 						disp_presence &= ~HW_DISP_44780;
@@ -783,11 +788,15 @@ int main(void)
 			{
 				uint8_t err_mask = 0;
 				HD44780s_set_address(I2C_US2066_ADR1);
-				// Setup character display test module.
-				chardisp_set_device(HD44780s_upload_symbol_flash,
-									HD44780s_set_xy_position,
+				// Setup general HD44780 operations.
+				hd44780_set_device(HD44780s_write_command_byte,
 									HD44780s_write_data_byte,
-									HD44780s_write_flash_string);
+									NULL);
+				// Setup character display test module.
+				chardisp_set_device(hd44780_upload_symbol_flash,
+									hd44780_set_xy_position,
+									HD44780s_write_data_byte,
+									hd44780_write_flash_string);
 				// Step animation forward.
 				err_mask = chardisp_step_animation(tasks_buf&TASK_SEC_TICK);
 				if(err_mask!=CHTST_RES_OK)
@@ -841,7 +850,7 @@ int main(void)
 					{
 						// Print address of detected slave device.
 #ifdef CONF_EN_HD44780P
-						HD44780_write_8bit_number(i2c_addr, HD44780_NUMBER_HEX); HD44780_write_string((uint8_t *)"~");
+						hd44780_write_8bit_number(i2c_addr, HD44780_NUMBER_HEX); hd44780_write_string((uint8_t *)"~");
 #endif
 						if((i2c_addr>=I2C_PCF8574_START)&&(i2c_addr<=I2C_PCF8574_END))
 						{

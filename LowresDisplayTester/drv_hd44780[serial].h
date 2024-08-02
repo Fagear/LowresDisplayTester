@@ -46,6 +46,7 @@ with [HD44780_select_fill_page()] and [HD44780_select_display_page()] at any tim
 
 //#include "config.h"
 #include "drv_io.h"
+#include "drv_hd44780[gen].h"
 #include <avr/io.h>
 #include <avr/pgmspace.h>
 #include <util/delay.h>
@@ -88,66 +89,10 @@ enum
 	#define HD44780S_BL			(1<<3)
 #endif /* HD44780_A0 */
 
-// MSBs for writing a command.
-enum
-{
-	HD44780S_CMD_CLR	= (1<<0),	// "Clear display"
-	HD44780S_CMD_HOME	= (1<<1),	// "Return home"
-	HD44780S_CMD_ENTRY	= (1<<2),	// "Entry mode set"
-	HD44780S_CMD_DISP	= (1<<3),	// "Display ON/OFF control"
-	HD44780S_CMD_SHIFT	= (1<<4),	// "Cursor or display shift"
-	HD44780S_CMD_FUNC	= (1<<5),	// "Function set"
-	HD44780S_CMD_SCGR	= (1<<6),	// "Set Character Generator RAM address"
-	HD44780S_CMD_SDDR	= (1<<7),	// "Set Display Data RAM address"
-};
-
-// Bits for "Entry mode set" command.
-enum
-{
-	HD44780S_ENTRY_RIGHT	= (1<<1),	// Shift right on data access (shift left if not set)
-	HD44780S_ENTRY_SHDISP	= (1<<0),	// Shift display on data access (shift cursor if not set)
-};
-
-// Bits for "Display ON/OFF control" command.
-enum
-{
-	HD44780S_DISP_SCREEN	= (1<<2),	// Enable display output (off if not set)
-	HD44780S_DISP_CURSOR	= (1<<1),	// Enable cursor drawing (no cursor if not set)
-	HD44780S_DISP_BLINK		= (1<<0),	// Enable blinking in position of the cursor (static if not set)
-};
-
-// Bits for "Cursor or display shift" command.
-enum
-{
-	HD44780S_SHIFT_DISP		= (1<<3),	// Force shifting display (shift cursor if not set)
-	HD44780S_SHIFT_RIGHT	= (1<<2),	// Force shifting to the right (to the left if not set)
-};
-
-// Bits for "Function set" command.
-enum
-{
-	HD44780S_FUNC_8BIT	= (1<<4),	// 8-bit data bus (4-bit if not set)
-	HD44780S_FUNC_2LINE	= (1<<3),	// 2-line display access mode (1-line if not set)
-	HD44780S_FUNC_5X10	= (1<<2),	// 5x10 CG font selected (5x8 CG font if not set) (only 5x8 font when 2-line mode selected)
-};
-
-// Error codes.
-enum
-{
-	HD44780S_OK			= 0,		// Everything went fine
-	HD44780S_ERR_BUSY	= (1<<0),	// Error while working with the display (BUSY wait fail)
-	HD44780S_ERR_DATA	= (1<<1),	// Error in input parameters of a function
-	HD44780S_ERR_BUS	= (1<<2),	// Error while testing display data bus
-};
-
 void HD44780s_set_address(uint8_t addr);
 uint8_t HD44780s_init(void);
 uint8_t HD44780s_write_command_byte(const uint8_t send_data);
 uint8_t HD44780s_write_data_byte(const uint8_t send_data);
-uint8_t HD44780s_set_xy_position(uint8_t x_pos, uint8_t y_pos);
-uint8_t HD44780s_upload_symbol_flash(uint8_t symbol_number, const int8_t *symbol_array);
-uint8_t HD44780s_write_string(uint8_t *str_output);
-uint8_t HD44780s_write_flash_string(const int8_t *str_output);
 
 #endif /* CONF_EN_HD44780S */
 

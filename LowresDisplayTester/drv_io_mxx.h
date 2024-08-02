@@ -198,48 +198,36 @@ Supported MCUs:	ATmega8(-/A), ATmega16(-/A), ATmega32(-/A).
 // Power consumption optimizations.
 #define PWR_COMP_OFF			ACSR |= (1<<ACD)			// Turn off Analog Comparator
 
-#ifdef CONF_EN_HD44780P
+/*#ifdef CONF_EN_HD44780P
 	#define CONF_NO_DEBUG_PINS
-#endif
+#endif*/
 
 // Debug output.
 #ifndef CONF_NO_DEBUG_PINS
 	#ifdef FGR_DRV_IO_M8
 		// ATmega8(-/A).
-		#define DBG_PORT1			PORTC
-		#define DBG_DIR1			DDRC
+		#define DBG_PORT			PORTD
+		#define DBG_DIR				DDRD
 		#define DBG_OUT1			(1<<0)
 		#define DBG_OUT2			(1<<1)
-		#define DBG_OUT3			(1<<2)
-		#define DBG_OUT4			(1<<3)
-		#define DBG_SETUP1			DBG_PORT1 &= ~(DBG_OUT1|DBG_OUT2|DBG_OUT3|DBG_OUT4)
-		#define DBG_SETUP2			DBG_DIR1 |= (DBG_OUT1|DBG_OUT2|DBG_OUT3|DBG_OUT4)
-		#define DBG_1_ON			DBG_PORT1 |= DBG_OUT1
-		#define DBG_1_OFF			DBG_PORT1 &= ~DBG_OUT1
-		#define DBG_2_ON			DBG_PORT1 |= DBG_OUT2
-		#define DBG_2_OFF			DBG_PORT1 &= ~DBG_OUT2
-		#define DBG_3_ON			DBG_PORT1 |= DBG_OUT3
-		#define DBG_3_OFF			DBG_PORT1 &= ~DBG_OUT3
-		#define DBG_4_ON			DBG_PORT1 |= DBG_OUT4
-		#define DBG_4_OFF			DBG_PORT1 &= ~DBG_OUT4
+		#define DBG_SETUP1			DBG_PORT &= ~(DBG_OUT1|DBG_OUT2)
+		#define DBG_SETUP2			DBG_DIR |= (DBG_OUT1|DBG_OUT2)
+		#define DBG_1_ON			DBG_PORT |= DBG_OUT1
+		#define DBG_1_OFF			DBG_PORT &= ~DBG_OUT1
+		#define DBG_2_ON			DBG_PORT |= DBG_OUT2
+		#define DBG_2_OFF			DBG_PORT &= ~DBG_OUT2
 	#else
 		// ATmega16(-/A), ATmega32(-/A).
-		#define DBG_PORT1			PORTC
-		#define DBG_DIR1			DDRC
-		#define DBG_OUT1			(1<<2)
-		#define DBG_OUT2			(1<<3)
-		#define DBG_OUT3			(1<<4)
-		#define DBG_OUT4			(1<<5)
-		#define DBG_SETUP1			DBG_PORT1 &= ~(DBG_OUT1|DBG_OUT2|DBG_OUT3|DBG_OUT4)
-		#define DBG_SETUP2			DBG_DIR1 |= (DBG_OUT1|DBG_OUT2|DBG_OUT3|DBG_OUT4)
-		#define DBG_1_ON			DBG_PORT1 |= DBG_OUT1
-		#define DBG_1_OFF			DBG_PORT1 &= ~DBG_OUT1
-		#define DBG_2_ON			DBG_PORT1 |= DBG_OUT2
-		#define DBG_2_OFF			DBG_PORT1 &= ~DBG_OUT2
-		#define DBG_3_ON			DBG_PORT1 |= DBG_OUT3
-		#define DBG_3_OFF			DBG_PORT1 &= ~DBG_OUT3
-		#define DBG_4_ON			DBG_PORT1 |= DBG_OUT4
-		#define DBG_4_OFF			DBG_PORT1 &= ~DBG_OUT4
+		#define DBG_PORT			PORTD
+		#define DBG_DIR				DDRD
+		#define DBG_OUT1			(1<<0)
+		#define DBG_OUT2			(1<<1)
+		#define DBG_SETUP1			DBG_PORT &= ~(DBG_OUT1|DBG_OUT2)
+		#define DBG_SETUP2			DBG_DIR |= (DBG_OUT1|DBG_OUT2)
+		#define DBG_1_ON			DBG_PORT |= DBG_OUT1
+		#define DBG_1_OFF			DBG_PORT &= ~DBG_OUT1
+		#define DBG_2_ON			DBG_PORT |= DBG_OUT2
+		#define DBG_2_OFF			DBG_PORT &= ~DBG_OUT2
 	#endif /* FGR_DRV_IO_M8 */
 #else
 	#define DBG_SETUP1
@@ -248,10 +236,6 @@ Supported MCUs:	ATmega8(-/A), ATmega16(-/A), ATmega32(-/A).
 	#define DBG_1_OFF
 	#define DBG_2_ON
 	#define DBG_2_OFF
-	#define DBG_3_ON
-	#define DBG_3_OFF
-	#define DBG_4_ON
-	#define DBG_4_OFF
 #endif /* CONF_NO_DEBUG_PINS */
 
 #endif /* FGR_DRV_IO_MXX_H_ */

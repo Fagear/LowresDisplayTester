@@ -42,7 +42,7 @@ before animations can be stepped with [chardisp_step_animation()] function.
 	#elif defined FGR_DRV_HD44780S_FOUND
 		enum
 		{
-			CHTST_RES_OK = HD44780S_OK,
+			CHTST_RES_OK = HD44780_OK,
 		};
 	#else
 		#error HD44780 driver not found!

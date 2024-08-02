@@ -142,27 +142,21 @@ Supported MCUs:	ATmega48(-/A/P/AP), ATmega88(-/A/P/AP), ATmega168(-/A/P/AP), ATm
 #define PWR_ADC_OPT			DIDR0 |= (1<<ADC0D)|(1<<ADC1D)|(1<<ADC2D)|(1<<ADC3D)|(1<<ADC4D)		// Turn off digital buffers on used ADC inputs
 
 #ifdef CONF_EN_HD44780P
-	#define CONF_NO_DEBUG_PINS
+	//#define CONF_NO_DEBUG_PINS
 #endif
 
 // Debug output.
 #ifndef CONF_NO_DEBUG_PINS
-	#define DBG_PORT1			PORTC
-	#define DBG_DIR1			DDRC
+	#define DBG_PORT			PORTD
+	#define DBG_DIR				DDRD
 	#define DBG_OUT1			(1<<0)
 	#define DBG_OUT2			(1<<1)
-	#define DBG_OUT3			(1<<2)
-	#define DBG_OUT4			(1<<3)
-	#define DBG_SETUP1			DBG_PORT1 &= ~(DBG_OUT1|DBG_OUT2|DBG_OUT3|DBG_OUT4)
-	#define DBG_SETUP2			DBG_DIR1 |= (DBG_OUT1|DBG_OUT2|DBG_OUT3|DBG_OUT4)
-	#define DBG_1_ON			DBG_PORT1 |= DBG_OUT1
-	#define DBG_1_OFF			DBG_PORT1 &= ~DBG_OUT1
-	#define DBG_2_ON			DBG_PORT1 |= DBG_OUT2
-	#define DBG_2_OFF			DBG_PORT1 &= ~DBG_OUT2
-	#define DBG_3_ON			DBG_PORT1 |= DBG_OUT3
-	#define DBG_3_OFF			DBG_PORT1 &= ~DBG_OUT3
-	#define DBG_4_ON			DBG_PORT1 |= DBG_OUT4
-	#define DBG_4_OFF			DBG_PORT1 &= ~DBG_OUT4
+	#define DBG_SETUP1			DBG_PORT &= ~(DBG_OUT1|DBG_OUT2)
+	#define DBG_SETUP2			DBG_DIR |= (DBG_OUT1|DBG_OUT2)
+	#define DBG_1_ON			DBG_PORT |= DBG_OUT1
+	#define DBG_1_OFF			DBG_PORT &= ~DBG_OUT1
+	#define DBG_2_ON			DBG_PORT |= DBG_OUT2
+	#define DBG_2_OFF			DBG_PORT &= ~DBG_OUT2
 #else
 	#define DBG_SETUP1
 	#define DBG_SETUP2
@@ -170,10 +164,6 @@ Supported MCUs:	ATmega48(-/A/P/AP), ATmega88(-/A/P/AP), ATmega168(-/A/P/AP), ATm
 	#define DBG_1_OFF
 	#define DBG_2_ON
 	#define DBG_2_OFF
-	#define DBG_3_ON
-	#define DBG_3_OFF
-	#define DBG_4_ON
-	#define DBG_4_OFF
 #endif /* CONF_NO_DEBUG_PINS */
 
 #endif /* FGR_DRV_IO_MXX8_H_ */

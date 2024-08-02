@@ -438,6 +438,8 @@ uint8_t chardisp_step_animation(uint8_t switch_tick)
 		else if(switch_tick!=0)
 		{
 			// Page already drawn and got one second tick.
+			// Clear screen.
+			err_collector |= chardisp_clear();
 			// Go to the next page.
 			chardisp_page_step++;
 			chardisp_ani_step = 0;
@@ -545,11 +547,13 @@ uint8_t chardisp_step_animation(uint8_t switch_tick)
 	else if((chardisp_page_step==ST_TEXT_PAUSE)||
 			(chardisp_page_step==ST_TEXT_PAUSE2))
 	{
-		if(switch_tick!=0)
+		chardisp_ani_step++;
+		if(chardisp_ani_step>=100)
 		{
 			// Page already drawn and got one second tick.
 			// Go to the next page.
 			chardisp_page_step++;
+			chardisp_ani_step = 0;
 		}
 	}
 	else if(chardisp_page_step==ST_TEXT_2x8)
@@ -688,7 +692,6 @@ uint8_t chardisp_step_animation(uint8_t switch_tick)
 		if(chardisp_ani_step==0)
 		{
 			// Not yet.
-			chardisp_ani_step++;
 			// Draw the page.
 			err_collector |= chardisp_set_xy_position(7, 0);
 			err_collector |= chardisp_fill(9, CHAR_SPACE);
@@ -737,7 +740,8 @@ uint8_t chardisp_step_animation(uint8_t switch_tick)
 			err_collector |= chardisp_write_char(C_CHAR_4);
 			err_collector |= chardisp_write_char(C_CHAR_2);
 		}
-		else if(switch_tick!=0)
+		chardisp_ani_step++;
+		if(chardisp_ani_step>=200)
 		{
 			// Page already drawn and got one second tick.
 			// Go to the next page.

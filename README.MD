@@ -9,8 +9,11 @@ It also can be used as a rudimentary pattern generator, but not very stable one.
 
 - Minimalistic and cheap circuitry
 - Switchable video generation standard (see list below)
-- Selectable sync only or containing video output
-- Additional outputs for VFD/LED/LCD/OLED displays
+- Sync generation (composite/H+V)
+- Selectable solid fill (or black level)
+- Selectable bar pattern generation
+- Additional outputs for VFD/LED/LCD/OLED character displays
+- Compile-time configuration (via [config.h] file) to select features/firmware size
 
 ## Video outputs
 
@@ -24,17 +27,20 @@ Only one video standard can be selected at any time.
 ## Display ports
 - HD44780-compatible (HD44780/KS0066/КБ1013ВГ6/PT6314/SPLC780/US2066/etc.) character display port with 8-bit paraller data bus (used in 4-bit mode)
 
-## Usage
+## Firmware
 
-Sorry, no electrical schematics at the moment...
+Adapter utilizes **Atmel AVR** MCU for all timing, video generation and data protocols. Firmware project is done in **AtmelStudio 7**.
+
+Target MCU is **ATmega 168** (either variant). But firmware should be compilable and working on **ATmega 328** variants as well. **ATmega 48** and **ATmega 88** are not supported due to low ROM capacity.
 
 MCU must be clocked from external 16.0 MHz Xtal for precise timing.
 
-<details>
-<summary>AVR fuse information</summary>
+Due to high clock and dependance of output analog levels on logic levels MCU should be run on voltages from **4.1 V** to **5.0 V**. Thus BOD (Brown-out Detector) is enabled by MCU fuses.
 
-Fuses for **ATmega328P** with *16 MHz Xtal*:
-- **SUT0** = 0
+<details>
+<summary>AVR fuses for ATmega328</summary>
+
+- **SUT1** = 0
 - **CKSEL3** = 0
 - **SPIEN** = 0
 - **BODLEVEL1** = 0
@@ -42,15 +48,48 @@ Fuses for **ATmega328P** with *16 MHz Xtal*:
 - all other at "1"
 
 In hex form:
-- low byte: **0xE7**
-- high byte: **0xD7**
+- low byte: **0xD7**
+- high byte: **0xDF**
 - extended byte: **0xFC**
 </details>
 
-Due to high clock and dependance of output analog levels on logic levels MCU should be run on voltages from **4.1 V** to **5.0 V**. Thus BOD (Brown-out Detector) is enabled by MCU fuses.
+<details>
+<summary>AVR fuses for ATmega88/ATmega168</summary>
+
+- **SUT1** = 0
+- **CKSEL3** = 0
+- **SPIEN** = 0
+- **BODLEVEL1** = 0
+- **BODLEVEL0** = 0
+- all other at "1"
+
+In hex form:
+- low byte: **0xD7**
+- high byte: **0xDC**
+- extended byte: **0xFF**
+</details>
 
 <details>
-<summary>Pinout for ATmega 168/328 MCU in SMD packages</summary>
+<summary>AVR fuses for ATmega8/ATmega16/ATmega32</summary>
+
+- **BODLEVEL** = 0
+- **BODEN** = 0
+- **SUT1** = 0
+- **SPIEN** = 0
+- **CKOPT** = 0
+- all other at "1"
+
+In hex form:
+- low byte: **0x1F**
+- high byte: **0xCF**
+</details>
+
+## Hardware
+
+Sorry, no electrical schematics at the moment...
+
+<details>
+<summary>Pinout for ATmega 88/168/328 MCU in SMD packages</summary>
 
 Power supply:
 - **pin 4** *(VCC)*: +5 V supply
@@ -71,9 +110,9 @@ User input:
 
 Video output:
 - **pin 13** *(PB1)*: (output) composite/horizontal ***sync output***
-- **pin 32** *(PD2)*: (input) sync input (loopback from *pin 15* through a jumper) for additional timing
-- **pin 10** *(PD6)*: (output) line ***active part*** signal output
-- **pin 14** *(PB2)*: (output) ***vertical sync*** output
+- **pin 32** *(PD2)*: (input) sync input (loopback from *pin 15*) for additional timing
+- **pin 10** *(PD6)*: (output) ***vertical sync*** output
+- **pin 14** *(PB2)*: (output) line ***active part*** signal output
 - **pin 17** *(PB5)*: (output) ***bar pattern*** output
 
 HD44780-compatible character display parallel port:
@@ -97,7 +136,7 @@ UART displays serial port:
 </details>
 
 <details>
-<summary>Pinout for ATmega 168/328 MCU in DIP packages</summary>
+<summary>Pinout for ATmega 88/168/328 MCU in DIP packages</summary>
 
 Power supply:
 - **pin 7** *(VCC)*: +5 V supply
@@ -116,9 +155,9 @@ User input:
 
 Video output:
 - **pin 15** *(PB1)*: (output) composite/horizontal ***sync output***
-- **pin 4** *(PD2)*: (input) sync input (loopback from *pin 15* through a jumper) for additional timing
-- **pin 12** *(PD6)*: (output) line ***active part*** signal output
-- **pin 16** *(PB2)*: (output) ***vertical sync*** output
+- **pin 4** *(PD2)*: (input) sync input (loopback from *pin 15*) for additional timing
+- **pin 12** *(PD6)*: (output) ***vertical sync*** output
+- **pin 16** *(PB2)*: (output) line ***active part*** signal output
 - **pin 19** *(PB5)*: (output) ***bar pattern*** output
 
 HD44780-compatible character display parallel port:
@@ -161,8 +200,8 @@ User input:
 
 Video output:
 - **pin 19** *(PD5)*: (output) composite/horizontal ***sync output***
-- **pin 16** *(PD2)*: (input) sync input (loopback from *pin 19* through a jumper) for additional timing
-- **pin 4** *(PB3)*: (output) line ***active part*** signal output
+- **pin 16** *(PD2)*: (input) sync input (loopback from *pin 19*) for additional timing
+- **pin 18** *(PD4)*: (output) line ***active part*** signal output
 - **pin 20** *(PD6)*: (output) ***vertical sync*** output
 - **pin 8** *(PB7)*: (output) ***bar pattern*** output
 
@@ -182,9 +221,11 @@ I2C displays serial port:
 UART displays serial port:
 - **pin 14** *(PD0)*: (input) ***UART data RX*** from display
 - **pin 15** *(PD1)*: (output) ***UART data TX*** to display
-- **pin 18** *(PD4)*: (input) ***Busy*** signal from display
+- **pin 17** *(PD3)*: (input) ***Busy*** signal from display
 
 </details>
+
+## Usage
 
 > [!NOTE]
 > Only one of the display output connectors should be used at any time.
@@ -194,8 +235,9 @@ UART displays serial port:
 
 ## Current state
 - Two-switch video selector works
-- PAL and NTSC frame generation works ok, having a little horizontal jitter
+- PAL and NTSC frame generation works ok
 - VGA, EGA and CGA frame generation works ok
+- Bar pattern for PAL/NTSC/CGA/EGA/VGA has horizontal jitter due to AVR interrupt jitter
 - HD44780 driver works fine
 
 ## Plans
