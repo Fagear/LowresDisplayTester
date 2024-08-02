@@ -29,9 +29,12 @@ TODO
 #define DRV_HD44780_GEN_H_
 
 #include "drv_cpu.h"
+#include <stddef.h>
 #include <stdint.h>
 #include <avr/pgmspace.h>
 #include <util/delay.h>
+
+#define HD44780_RU_REENCODE					// Enable re-encoding Cyrillic for displays without codepage support
 
 enum
 {
@@ -131,8 +134,12 @@ uint8_t hd44780_set_x_position(uint8_t x_pos);
 uint8_t hd44780_clear_line(const uint8_t line_idx);
 uint8_t hd44780_digit_to_data(const uint8_t send_number, const uint8_t send_mode);
 uint8_t hd44780_write_8bit_number(const uint8_t send_number, const uint8_t send_mode);	
-uint8_t hd44780_write_flash_string(const int8_t *str_output);
-uint8_t hd44780_write_string(uint8_t *str_output);
+#ifdef HD44780_RU_REENCODE
+uint8_t hd44780_cp1251toRU(uint8_t in_char);
+uint8_t hd44780_cp1251toEN(uint8_t in_char);
+#endif /* HD44780_RU_REENCODE */
+uint8_t hd44780_write_flash_string(const int8_t *str_output, void *f_conv);
+uint8_t hd44780_write_string(uint8_t *str_output, void *f_conv);
 uint8_t hd44780_ddram_read(uint8_t x_pos, uint8_t *read_result);
 uint8_t hd44780_cgram_read(uint8_t char_idx, uint8_t *read_result);
 uint8_t hd44780_selftest(void);

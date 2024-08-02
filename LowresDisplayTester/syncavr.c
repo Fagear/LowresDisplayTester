@@ -19,7 +19,7 @@ volatile uint8_t comp_data_idx = 0;					// Index for vertical bar groups.
 
 volatile const uint8_t ucaf_compile_date[] PROGMEM = __DATE__;		// Date of compilation
 volatile const uint8_t ucaf_compile_time[] PROGMEM = __TIME__;		// Time of compilation
-volatile const uint8_t ucaf_version[] PROGMEM = "v0.10";			// Firmware version
+volatile const uint8_t ucaf_version[] PROGMEM = "v0.11";			// Firmware version
 volatile const uint8_t ucaf_author[] PROGMEM = "Maksim Kryukov aka Fagear (fagear@mail.ru)";	// Author
 volatile const uint8_t ucaf_info[] PROGMEM = "ATmega sync gen/display tester";					// Firmware description
 
@@ -685,7 +685,7 @@ int main(void)
 		disp_presence |= HW_DISP_44780;
 		hd44780_set_device(HD44780_write_command_byte, HD44780_write_data_byte, HD44780_read_byte);
 		hd44780_set_xy_position(0, 0);
-		hd44780_write_string((uint8_t *)"Display TEST|");
+		hd44780_write_string((uint8_t *)"Display TEST|", NULL);
 	}
 #endif /* CONF_EN_HD44780P */
 
@@ -765,7 +765,7 @@ int main(void)
 									HD44780_write_data_byte,
 									hd44780_write_flash_string);
 				// Step animation forward.
-				err_mask = chardisp_step_animation(tasks_buf&TASK_SEC_TICK);
+				err_mask = chardisp_step_animation();
 				if(err_mask!=CHTST_RES_OK)
 				{
 					// Seems like display fell of the bus.
@@ -850,7 +850,7 @@ int main(void)
 					{
 						// Print address of detected slave device.
 #ifdef CONF_EN_HD44780P
-						hd44780_write_8bit_number(i2c_addr, HD44780_NUMBER_HEX); hd44780_write_string((uint8_t *)"~");
+						hd44780_write_8bit_number(i2c_addr, HD44780_NUMBER_HEX); hd44780_write_string((uint8_t *)"~", NULL);
 #endif
 						if((i2c_addr>=I2C_PCF8574_START)&&(i2c_addr<=I2C_PCF8574_END))
 						{

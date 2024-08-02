@@ -38,10 +38,10 @@ Part of the [LowresDisplayTester] project.
 #include <util/delay.h>
 
 // Configuration and user input.
-#define SW_VID_SYS0			(1<<0)
-#define SW_VID_SYS1			(1<<1)
+#define SW_VID_SYS0		(1<<0)
+#define SW_VID_SYS1		(1<<1)
 
-#define SPI_DUMMY_SEND		0xA5	// Dummy byte to send via SPI to generate bars
+#define SPI_DUMMY_SEND	0xA5	// Dummy byte to send via SPI to generate bars
 
 // Sync generation modes.
 enum
@@ -63,22 +63,23 @@ enum
 // Frequencies of generated vertical bars.
 enum
 {
-	BAR_FREQ_500Hz = 500000,
-	BAR_FREQ_1MHz = 1000000,
-	BAR_FREQ_2MHz = 2000000,
-	BAR_FREQ_4MHz = 4000000,
-	BAR_FREQ_8MHz = 8000000,
+	BAR_FREQ_500Hz		= 500000,
+	BAR_FREQ_1MHz		= 1000000,
+	BAR_FREQ_2MHz		= 2000000,
+	BAR_FREQ_4MHz		= 4000000,
+	BAR_FREQ_8MHz		= 8000000,
 };
 
 // System tasks.
 enum
 {
-	TASK_UPDATE_ASYNC = (1<<0),
-	TASK_SEC_TICK = (1<<1),
-	TASK_I2C = (1<<2),
-	TASK_I2C_SCAN = (1<<3),
-	TASK_UART_RX = (1<<4),
-	TASK_UART_TX = (1<<5),
+	TASK_UPDATE_ASYNC	= (1<<0),
+	TASK_SEC_TICK		= (1<<1),
+	TASK_SEC_ANIM		= (1<<2),
+	TASK_I2C			= (1<<3),
+	TASK_I2C_SCAN		= (1<<4),
+	TASK_UART_RX		= (1<<5),
+	TASK_UART_TX		= (1<<6),
 };
 
 void system_startup(void);

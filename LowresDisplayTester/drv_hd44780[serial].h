@@ -21,9 +21,10 @@ Part of the [LowresDisplayTester] project.
 HD44780-compatible (HD44780/KS0066/КБ1013ВГ6/PT6314/SPLC780/US2066) character display serial driver
 for AVR MCUs and AVRStudio/WinAVR/AtmelStudio compilers.
 
+TODO: cleaup this junk
 Initialization routine [HD44780s_init()] is provided.
 Single-byte operations are performed through [HD44780s_write_command_byte()] and [HD44780_read_byte()].
-Driver supports cyrillic displays on КБ1013ВГ6 controller with CP1251 codepage
+Driver supports Cyrillic displays on КБ1013ВГ6 controller with CP1251 codepage
 and re-encoding ASCII values for other displays if [HD44780_RU_REENCODE] is set.
 
 There are several service functions, for example:

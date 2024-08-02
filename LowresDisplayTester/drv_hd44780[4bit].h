@@ -21,6 +21,7 @@ Part of the [LowresDisplayTester] project.
 HD44780-compatible (HD44780/KS0066/КБ1013ВГ6/PT6314/SPLC780/US2066) character display driver
 for AVR MCUs and AVRStudio/WinAVR/AtmelStudio compilers.
 
+TODO: cleaup this junk
 This driver utilizes 4-bit data bus connection and BUSY-flag reading based operations.
 Driver requires display connections to be not more than on two ports of the MCU,
 3 pins for command lines and 4 pins for data lines. Single port connection is also possible.
@@ -28,7 +29,7 @@ See [HD44780CTRL_PORT], [HD44780DATA_PORT] defines.
 
 Initialization routine [HD44780_init()] and self-test routine [HD44780_selftest()] are provided.
 Single-byte operations are performed through [HD44780_write_byte()] and [HD44780_read_byte()].
-Driver supports cyrillic displays on КБ1013ВГ6 controller with CP1251 codepage
+Driver supports Cyrillic displays on КБ1013ВГ6 controller with CP1251 codepage
 and re-encoding ASCII values for other displays if [HD44780_RU_REENCODE] is set.
 
 There are several service functions, for example:
@@ -61,8 +62,6 @@ Service functions for buffered access start from "HD44780_buf_" instead of "HD44
 #ifdef CONF_EN_HD44780P
 
 #define FGR_DRV_HD44780P_FOUND
-
-//#define HD44780_RU_REENCODE					// Enable re-encoding Cyrillic for displays without CP1251 support
 
 // HD44780 display interface hardware.
 #ifndef HD44780_A0

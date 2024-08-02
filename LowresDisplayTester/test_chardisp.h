@@ -32,6 +32,7 @@ before animations can be stepped with [chardisp_step_animation()] function.
 
 #include <stdio.h>
 #include "drv_io.h"
+
 #ifdef CONF_EN_CHARDISP
 
 	#ifdef FGR_DRV_HD44780P_FOUND
@@ -53,6 +54,9 @@ before animations can be stepped with [chardisp_step_animation()] function.
 		#define CHARDISP_FULL
 	#endif
 	
+	// Enable tests for Cyrillic support.
+	#define CYR_TESTS
+	
 	// Custom character indexes.
 	enum
 	{
@@ -71,7 +75,7 @@ before animations can be stepped with [chardisp_step_animation()] function.
 	enum
 	{
 		ST_TEXT_DET,		// Print out "Detected" message only after display first found
-		ST_TEXT_1x8,
+		ST_TEXT_1x8,		// Print dimensions of the display rows and columns
 		ST_TEXT_1x16,
 		ST_TEXT_1x20,
 		ST_TEXT_1x24,
@@ -80,7 +84,7 @@ before animations can be stepped with [chardisp_step_animation()] function.
 		ST_ROTATE,			// Display rotating animation on 8x1 brackets
 #endif /* CHARDISP_FULL */
 		ST_TEXT_PAUSE,
-		ST_TEXT_2x8,
+		ST_TEXT_2x8,		// Print NUT
 		ST_TEXT_2x16,
 		ST_TEXT_2x20,
 		ST_TEXT_2x24,
@@ -92,6 +96,14 @@ before animations can be stepped with [chardisp_step_animation()] function.
 #endif /* CHARDISP_FULL */
 		ST_CP_FILL,			// Print all symbols from codepage
 		ST_TEXT_PAUSE2,
+#ifdef CYR_TESTS
+		ST_CYR_EN_LC,		// Cyrillic lower-case letters on regular display
+		ST_CYR_RU_LC,		// Cyrillic lower-case letters on Cyrillic-enabled display
+		ST_CYR_EN_UC,		// Cyrillic upper-case letters on regular display
+		ST_CYR_RU_UC,		// Cyrillic upper-case letters on Cyrillic-enabled display
+		ST_CYR_RU_SYM,		// Cyrillic symbols from CP1251 on Cyrillic-enabled display
+		ST_TEXT_PAUSE3,
+#endif /* CYR_TESTS */
 		ST_END_CLEAR,
 		ST_TEXT_MAX
 	};
@@ -115,7 +127,7 @@ before animations can be stepped with [chardisp_step_animation()] function.
 	uint8_t chardisp_step_ani_fade(uint8_t *err_mask);
 #endif /* CHARDISP_FULL */
 	uint8_t chardisp_step_ani_cp_fill(uint8_t *err_mask);
-	uint8_t chardisp_step_animation(uint8_t switch_tick);
+	uint8_t chardisp_step_animation();
 #endif /* CONF_EN_CHARDISP */
 
 #endif /* TEST_CHARDISP_H_ */
