@@ -30,6 +30,7 @@ Supported MCUs:	ATmega8(-/A), ATmega16(-/A), ATmega32(-/A), ATmega48(-/A/P/AP), 
 #include <avr/io.h>
 #include "drv_CPU.h"	// Contains [F_CPU].
 
+#undef FGR_DRV_SPI_Mx
 #undef FGR_DRV_SPI_Mxx
 #undef FGR_DRV_SPI_Mxx8
 
@@ -41,7 +42,7 @@ Supported MCUs:	ATmega8(-/A), ATmega16(-/A), ATmega32(-/A), ATmega48(-/A/P/AP), 
 	#endif /* SIGNATURE_2 */
 #elif SIGNATURE_1 == 0x93
 	#if SIGNATURE_2 == 0x07			// ATmega8, ATmega8A
-		#define FGR_DRV_SPI_Mxx
+		#define FGR_DRV_SPI_Mx
 	#elif SIGNATURE_2 == 0x0A		// ATmega88, ATmega88A
 		#define  FGR_DRV_SPI_Mxx8
 	#elif SIGNATURE_2 == 0x0F		// ATmega88P, ATmega88PA
@@ -65,15 +66,27 @@ Supported MCUs:	ATmega8(-/A), ATmega16(-/A), ATmega32(-/A), ATmega48(-/A/P/AP), 
 	#endif /* SIGNATURE_2 */
 #endif /* SIGNATURE_1 */
 
-#ifdef FGR_DRV_SPI_Mxx
+#ifdef FGR_DRV_SPI_Mx
 	// SPI hardware.
-	#define FGR_DRV_SPI_HW_FOUND		// ATmega8(-/A), ATmega16(-/A), ATmega32(-/A)
+	#define FGR_DRV_SPI_HW_FOUND		// ATmega8(-/A)
 	#define SPI_PORT			PORTB
 	#define SPI_DIR				DDRB
 	#define SPI_CLK				(1<<5)
 	#define SPI_MOSI			(1<<3)
 	#define SPI_MISO			(1<<4)
 	#define SPI_CS				(1<<2)
+	#define SPI_INT				SPI_STC_vect		// SPI Serial Transfer interrupt vector alias
+	#define SPI_CONTROL			SPCR				// Control register
+	#define SPI_STATUS			SPSR				// Status register
+	#define SPI_DATA			SPDR				// Data register
+#elif defined(FGR_DRV_SPI_Mxx)
+	#define FGR_DRV_SPI_HW_FOUND		// ATmega16(-/A), ATmega32(-/A)
+	#define SPI_PORT			PORTB
+	#define SPI_DIR				DDRB
+	#define SPI_CLK				(1<<7)
+	#define SPI_MOSI			(1<<5)
+	#define SPI_MISO			(1<<6)
+	#define SPI_CS				(1<<4)
 	#define SPI_INT				SPI_STC_vect		// SPI Serial Transfer interrupt vector alias
 	#define SPI_CONTROL			SPCR				// Control register
 	#define SPI_STATUS			SPSR				// Status register
@@ -91,20 +104,7 @@ Supported MCUs:	ATmega8(-/A), ATmega16(-/A), ATmega32(-/A), ATmega48(-/A/P/AP), 
 	#define SPI_CONTROL			SPCR				// Control register
 	#define SPI_STATUS			SPSR				// Status register
 	#define SPI_DATA			SPDR				// Data register
-	// SPI through UART hardware.
-	#define FGR_DRV_UARTSPI_HW_FOUND
-	#define UART_SPI_PORT		PORTD
-	#define UART_SPI_DIR		DDRD
-	#define UART_SPI_CLK		(1<<4)
-	#define UART_SPI_MOSI		(1<<1)
-	#define UART_SPI_MISO		(1<<0)
-	#define UART_SPI_INT		USART_TX_vect_num	// SPI through UART Serial Transfer interrupt vector alias
-	#define UART_SPI_STATUS		UCSR0A				// Status register
-	#define UART_SPI_CONTROL1	UCSR0B				// Control register 1
-	#define UART_SPI_CONTROL2	UCSR0C				// Control register 2
-	#define UART_SPI_DATA		UDR0				// Data register
-	#define UART_SPI_DIVIDER	UBRR0				// Bitrate register
-#endif /* FGR_DRV_SPI_Mxx */
+#endif /* FGR_DRV_SPI_Mx */
 
 #ifdef FGR_DRV_SPI_HW_FOUND
 
@@ -136,19 +136,6 @@ enum
 	// Workaround for broken headers for xxxPA MCUs: disable SPI through UART.
 	#undef FGR_DRV_UARTSPI_HW_FOUND
 #endif
-
-#ifdef FGR_DRV_UARTSPI_HW_FOUND
-
-#define UART_SPI_CONFIG_M0	UART_SPI_CONTROL2 = (1<<UMSEL01)|(1<<UMSEL00)|(0<<UDORD0)|(0<<UCPHA0)|(0<<UCPOL0)	// Configure SPI for Master operation Mode 0 (sample on rising, setup on falling)
-#define UART_SPI_CONFIG_M1	UART_SPI_CONTROL2 = (1<<UMSEL01)|(1<<UMSEL00)|(0<<UDORD0)|(1<<UCPHA0)|(0<<UCPOL0)	// Configure SPI for Master operation Mode 1 (setup on rising, sample on falling)
-#define UART_SPI_CONFIG_M2	UART_SPI_CONTROL2 = (1<<UMSEL01)|(1<<UMSEL00)|(0<<UDORD0)|(0<<UCPHA0)|(1<<UCPOL0)	// Configure SPI for Master operation Mode 2 (sample on falling, setup on rising)
-#define UART_SPI_CONFIG_M3	UART_SPI_CONTROL2 = (1<<UMSEL01)|(1<<UMSEL00)|(0<<UDORD0)|(1<<UCPHA0)|(1<<UCPOL0)	// Configure SPI for Master operation Mode 3 (setup on falling, sample on rising)
-#define UART_SPI_START		UART_SPI_CONTROL1 |= (1<<RXEN0)|(1<<TXEN0)						// Start SPI HW
-#define UART_SPI_STOP		UART_SPI_CONTROL1 &= ~((1<<RXEN0)|(1<<TXEN0))					// Stop SPI HW
-#define UART_SPI_INT_EN		UART_SPI_CONTROL1 |= (1<<TXCIE0)								// Enable interrupt on transfer completion
-#define UART_SPI_INT_DIS	UART_SPI_CONTROL1 &= ~((1<<TXCIE0)|(1<<RXCIE0)|(1<<UDRIE0));	// Disable interrupts
-
-#endif /* FGR_DRV_UARTSPI_HW_FOUND */
 
 #ifdef FGR_DRV_SPI_HW_FOUND
 
@@ -239,36 +226,5 @@ inline void SPI_set_target_clock(uint32_t target_speed)
 }
 
 #endif /* FGR_DRV_SPI_HW_FOUND */
-
-#ifdef FGR_DRV_UARTSPI_HW_FOUND
-
-inline void UART_SPI_init_HW(void)
-{
-	// Init pins.
-	UART_SPI_PORT &= ~(UART_SPI_CLK|UART_SPI_MOSI);
-	UART_SPI_DIR |= UART_SPI_CLK|UART_SPI_MOSI;
-	UART_SPI_DIR &= ~UART_SPI_MISO;
-	UART_SPI_PORT |= (UART_SPI_CLK|UART_SPI_MOSI);
-}
-
-inline void UART_SPI_set_target_clock(uint32_t target_speed)
-{
-	uint32_t calc_div;
-	calc_div = F_CPU/2/target_speed;
-	// Check for lower limit.
-	if(calc_div==0)
-	{
-		calc_div = 1;
-	}
-	calc_div -= 1;
-	// Check for higher limit.
-	if(calc_div>4095)
-	{
-		calc_div = 4095;
-	}
-	UART_SPI_DIVIDER = calc_div;
-}
-
-#endif /* FGR_DRV_UARTSPI_HW_FOUND */
 
 #endif /* FGR_DRV_SPI_H_ */

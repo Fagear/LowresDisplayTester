@@ -978,6 +978,7 @@ uint8_t chardisp_step_animation()
 	}
 	else
 	{
+		// Reset animation cycle.
 		chardisp_page_step = ST_TEXT_1x8;
 		chardisp_ani_step = 0;
 	}
