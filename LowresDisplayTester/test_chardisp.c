@@ -849,51 +849,6 @@ uint8_t chardisp_step_animation()
 			chardisp_ani_step = 0;
 		}
 	}
-	else if(chardisp_page_step==ST_CYR_EN_UC)
-	{
-		// Check if page was drawn.
-		if(chardisp_ani_step==0)
-		{
-			// Not yet.
-			// Load custom font.
-			err_collector |= chardisp_upload_symbol_flash(C_CHAR_0, usr_char_b_uc);
-			err_collector |= chardisp_upload_symbol_flash(C_CHAR_1, usr_char_g_uc);
-			err_collector |= chardisp_upload_symbol_flash(C_CHAR_2, usr_char_j_uc);
-			err_collector |= chardisp_upload_symbol_flash(C_CHAR_3, usr_char_f_uc);
-			err_collector |= chardisp_upload_symbol_flash(C_CHAR_4, usr_char_yi_uc);
-			err_collector |= chardisp_upload_symbol_flash(C_CHAR_5, usr_char_e_uc);
-			err_collector |= chardisp_upload_symbol_flash(C_CHAR_6, usr_char_ju_uc);
-			err_collector |= chardisp_upload_symbol_flash(C_CHAR_7, usr_char_ja_uc);
-			// Draw the page.
-			err_collector |= chardisp_set_xy_position(0, 0);
-			err_collector |= chardisp_write_flash_string(cp1251_uc1, hd44780_cp1251toEN);
-			err_collector |= chardisp_set_xy_position(0, 1);
-			err_collector |= chardisp_write_flash_string(cp1251_uc2, hd44780_cp1251toEN);
-			// Substitute custom symbols.
-			err_collector |= chardisp_set_xy_position(1, 0);
-			err_collector |= chardisp_write_char(C_CHAR_0);
-			err_collector |= chardisp_set_xy_position(3, 0);
-			err_collector |= chardisp_write_char(C_CHAR_1);
-			err_collector |= chardisp_set_xy_position(7, 0);
-			err_collector |= chardisp_write_char(C_CHAR_2);
-			err_collector |= chardisp_set_xy_position(5, 1);
-			err_collector |= chardisp_write_char(C_CHAR_3);
-			err_collector |= chardisp_set_xy_position(12, 1);
-			err_collector |= chardisp_write_char(C_CHAR_4);
-			err_collector |= chardisp_set_xy_position(14, 1);
-			err_collector |= chardisp_write_char(C_CHAR_5);
-			err_collector |= chardisp_write_char(C_CHAR_6);
-			err_collector |= chardisp_write_char(C_CHAR_7);
-		}
-		chardisp_ani_step++;
-		if(chardisp_ani_step>=150)
-		{
-			// Page already drawn and timer run out.
-			// Go to the next page.
-			chardisp_page_step++;
-			chardisp_ani_step = 0;
-		}
-	}
 	else if(chardisp_page_step==ST_CYR_RU_LC)
 	{
 		// Check if page was drawn.
@@ -905,48 +860,6 @@ uint8_t chardisp_step_animation()
 			err_collector |= chardisp_write_flash_string(cp1251_lc1, hd44780_cp1251toRU);
 			err_collector |= chardisp_set_xy_position(0, 1);
 			err_collector |= chardisp_write_flash_string(cp1251_lc2, hd44780_cp1251toRU);
-		}
-		chardisp_ani_step++;
-		if(chardisp_ani_step>=150)
-		{
-			// Page already drawn and timer run out.
-			// Go to the next page.
-			chardisp_page_step++;
-			chardisp_ani_step = 0;
-		}
-	}
-	else if(chardisp_page_step==ST_CYR_RU_UC)
-	{
-		// Check if page was drawn.
-		if(chardisp_ani_step==0)
-		{
-			// Not yet.
-			// Draw the page.
-			err_collector |= chardisp_set_xy_position(0, 0);
-			err_collector |= chardisp_write_flash_string(cp1251_uc1, hd44780_cp1251toRU);
-			err_collector |= chardisp_set_xy_position(0, 1);
-			err_collector |= chardisp_write_flash_string(cp1251_uc2, hd44780_cp1251toRU);
-		}
-		chardisp_ani_step++;
-		if(chardisp_ani_step>=150)
-		{
-			// Page already drawn and timer run out.
-			// Go to the next page.
-			chardisp_page_step++;
-			chardisp_ani_step = 0;
-		}
-	}
-	else if(chardisp_page_step==ST_CYR_RU_SYM)
-	{
-		// Check if page was drawn.
-		if(chardisp_ani_step==0)
-		{
-			// Not yet.
-			// Draw the page.
-			err_collector |= chardisp_set_xy_position(0, 0);
-			err_collector |= chardisp_write_flash_string(cp1251_symbols1, hd44780_cp1251toRU);
-			err_collector |= chardisp_set_xy_position(0, 1);
-			err_collector |= chardisp_write_flash_string(cp1251_symbols2, hd44780_cp1251toRU);
 		}
 		chardisp_ani_step++;
 		if(chardisp_ani_step>=150)
