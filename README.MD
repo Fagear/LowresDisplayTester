@@ -247,6 +247,8 @@ Video standard is selected through "MODE" switches.
 When powered MCUs also tries to communicate with a character display through *HD44780* connector.
 Firmware has a detection procedure that tests for display presence. On detected display firmware runs a small display controller integrity test (it tests bus connection, Display RAM and CG RAM of the display). If test runs ok firmware starts character animation sequence.
 
+Video examples and character display demos in [/progress](progress) folder.
+
 ## Current state
 - Two-switch video selector works
 - PAL and NTSC frame generation works ok
