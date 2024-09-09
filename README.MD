@@ -25,7 +25,7 @@ It also can be used as a rudimentary pattern generator, but not very stable one.
 Only one video standard can be selected at any time.
 
 ## Display ports
-- HD44780-compatible (HD44780/KS0066/КБ1013ВГ6/PT6314/SPLC780/US2066/etc.) character display port with 8-bit paraller data bus (used in 4-bit mode)
+- HD44780-compatible (HD44780/KS0066/КБ1013ВГ6/PT6314/SPLC780/US2066/etc.) LCD/VFD/OLED character display port with 8-bit paraller data bus (used in 4-bit mode)
 
 ## Firmware
 
@@ -237,12 +237,15 @@ UART displays serial port:
 
 Power supply connects to the default (center-positive) DC barrel jack on the PCB. The board is equiped with reverse-polarity protection. Supplied voltage should in range of **8...20 Volts**. Onboard linear volate regulator provides 5V for MCU and connected character display.
 
-On power-on MCU starts generating video signal for selected video standard. In parallel MCUs tries to communicate with character display through *HD44780* connector.
+On power-on MCU starts generating video signal for selected video standard.
 
 > [!NOTE]
 > Only one of the display output connectors should be used at any time.
 
 Video standard is selected through "MODE" switches.
+
+When powered MCUs also tries to communicate with a character display through *HD44780* connector.
+Firmware has a detection procedure that tests for display presence. On detected display firmware runs a small display controller integrity test (it tests bus connection, Display RAM and CG RAM of the display). If test runs ok firmware starts character animation sequence.
 
 ## Current state
 - Two-switch video selector works

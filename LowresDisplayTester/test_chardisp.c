@@ -123,8 +123,8 @@ void chardisp_reset_anim(void)
 //-------------------------------------- Check if animation cycle is done.
 uint8_t chardisp_cycle_done(void)
 {
-	if((chardisp_page_step==ST_TEXT_1x8)&&
-		(chardisp_ani_step==0))
+	if((chardisp_page_step==ST_TEXT_1x8)
+		&&(chardisp_ani_step==0))
 	{
 		return ST_ANI_DONE;
 	}

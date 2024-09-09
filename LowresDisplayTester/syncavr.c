@@ -19,7 +19,7 @@ volatile uint8_t comp_data_idx = 0;					// Index for vertical bar groups.
 
 volatile const uint8_t ucaf_compile_date[] PROGMEM = __DATE__;		// Date of compilation
 volatile const uint8_t ucaf_compile_time[] PROGMEM = __TIME__;		// Time of compilation
-volatile const uint8_t ucaf_version[] PROGMEM = "v0.11";			// Firmware version
+volatile const uint8_t ucaf_version[] PROGMEM = "v1.00";			// Firmware version
 volatile const uint8_t ucaf_author[] PROGMEM = "Maksim Kryukov aka Fagear (fagear@mail.ru)";	// Author
 volatile const uint8_t ucaf_info[] PROGMEM = "ATmega sync gen/display tester";					// Firmware description
 
